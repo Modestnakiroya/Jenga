@@ -20,3 +20,11 @@ class HomeView(TemplateView):
             (value, labels[value]) for value in EXPENSE_CATEGORIES
         ]
         return context
+
+
+class HowItWorksView(TemplateView):
+    template_name = "how_it_works.html"
+
+
+class ProfilePageView(TemplateView):
+    template_name = "profile.html"
