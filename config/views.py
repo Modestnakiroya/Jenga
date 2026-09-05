@@ -1,9 +1,7 @@
-import json
-
 from django.views.generic import TemplateView
 
 from apps.accounts.models import BusinessType, Language, TrackingFrequency
-from apps.assistant.translations import DASHBOARD_LABELS
+from apps.assistant.translations import dashboard_labels_json
 from apps.transactions.models import EXPENSE_CATEGORIES, INCOME_CATEGORIES, TransactionCategory
 
 
@@ -22,5 +20,5 @@ class HomeView(TemplateView):
         context["expense_categories"] = [
             (value, labels[value]) for value in EXPENSE_CATEGORIES
         ]
-        context["dashboard_labels_json"] = json.dumps(DASHBOARD_LABELS, ensure_ascii=True)
+        context["dashboard_labels_json"] = dashboard_labels_json()
         return context

@@ -186,3 +186,16 @@ class AccountsAPITests(APITestCase):
             TrackingFrequency.DAILY,
         )
         self.assertNotIn("password", response.data)
+
+    def test_preferred_language_patch_persists(self):
+        self.register()
+        self.authenticate()
+
+        response = self.client.patch(
+            self.profile_url,
+            {"preferred_language": "luganda"},
+            format="json",
+        )
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertEqual(response.data["preferred_language"], "luganda")
+        self.assertEqual(User.objects.get().preferred_language, "luganda")

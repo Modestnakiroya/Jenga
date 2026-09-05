@@ -393,7 +393,7 @@
         <div class="dash-meta">
           <span class="freq-label" id="dash-frequency"></span>
           <div class="lang-switch">
-            <label for="dash-language">Language</label>
+            <label for="dash-language" data-i18n="language">Language</label>
             <select id="dash-language" aria-label="Preferred language">
               {% for value, label in languages %}
                 <option value="{{ value }}">{{ label }}</option>
@@ -434,7 +434,7 @@
           </div>
           <p class="metric" data-i18n="safely_available">Safely available</p>
           <p class="amount large" id="safe-to-spend-amount">UGX 0</p>
-          <p class="hint">Cash on hand minus upcoming expenses and a 15% emergency reserve.</p>
+          <p class="hint" data-i18n="safe_hint">Cash on hand minus upcoming expenses and a 15% emergency reserve.</p>
         </section>
 
         <section class="card">
@@ -477,11 +477,11 @@
             </div>
           </div>
           <p id="dash-retirement-setup" class="hint hidden">
-            <button type="button" class="text-link" id="open-retirement-setup">Set up your retirement plan</button>
+            <button type="button" class="text-link" id="open-retirement-setup" data-i18n="setup_retirement">Set up your retirement plan</button>
           </p>
           <p id="dash-retirement-status" class="hint hidden">
             <span id="dash-retirement-label"></span>
-            <button type="button" class="text-link" id="open-retirement-edit">Update</button>
+            <button type="button" class="text-link" id="open-retirement-edit" data-i18n="update">Update</button>
           </p>
         </section>
 
@@ -497,31 +497,31 @@
       <div class="overlay hidden" id="retirement-overlay">
         <div class="card">
           <div class="card-head">
-            <h2 id="retirement-form-title">Retirement plan</h2>
-            <button type="button" class="ghost" id="retirement-close" style="width:auto;padding:0.4rem 0.7rem;border-radius:8px;font-weight:700;">Close</button>
+            <h2 id="retirement-form-title" data-i18n="retirement_plan">Retirement plan</h2>
+            <button type="button" class="ghost" id="retirement-close" data-i18n="close" style="width:auto;padding:0.4rem 0.7rem;border-radius:8px;font-weight:700;">Close</button>
           </div>
           <form id="retirement-form">
-            <label for="retirement-current-age">Current age</label>
+            <label for="retirement-current-age" data-i18n="current_age">Current age</label>
             <input id="retirement-current-age" name="current_age" type="number" min="1" step="1" required>
 
-            <label for="retirement-desired-age">Desired retirement age</label>
+            <label for="retirement-desired-age" data-i18n="desired_retirement_age">Desired retirement age</label>
             <input id="retirement-desired-age" name="desired_retirement_age" type="number" min="2" step="1" required>
 
-            <label for="retirement-savings">Current savings (UGX)</label>
+            <label for="retirement-savings" data-i18n="current_savings">Current savings (UGX)</label>
             <input id="retirement-savings" name="current_savings" type="number" min="0" step="0.01" value="0">
 
-            <label for="retirement-pension">Existing pension balance (UGX)</label>
+            <label for="retirement-pension" data-i18n="existing_pension">Existing pension balance (UGX)</label>
             <input id="retirement-pension" name="existing_pension_balance" type="number" min="0" step="0.01" value="0">
 
-            <label for="retirement-fund">Desired retirement fund (UGX)</label>
+            <label for="retirement-fund" data-i18n="desired_fund">Desired retirement fund (UGX)</label>
             <input id="retirement-fund" name="desired_retirement_fund" type="number" min="0.01" step="0.01" required>
 
-            <label for="retirement-contribution">Current monthly contribution (UGX)</label>
+            <label for="retirement-contribution" data-i18n="monthly_contribution">Current monthly contribution (UGX)</label>
             <input id="retirement-contribution" name="current_monthly_contribution" type="number" min="0" step="0.01" value="0">
 
             <div id="retirement-message" class="msg"></div>
             <div class="form-actions">
-              <button type="submit">Save plan</button>
+              <button type="submit" data-i18n="save_plan">Save plan</button>
             </div>
           </form>
         </div>
@@ -530,14 +530,14 @@
       <div class="overlay hidden" id="afford-overlay">
         <div class="card">
           <div class="card-head">
-            <h2>Can I afford this?</h2>
-            <button type="button" class="ghost" id="afford-close" style="width:auto;padding:0.4rem 0.7rem;border-radius:8px;font-weight:700;">Close</button>
+            <h2 data-i18n="can_i_afford">Can I afford this?</h2>
+            <button type="button" class="ghost" id="afford-close" data-i18n="close" style="width:auto;padding:0.4rem 0.7rem;border-radius:8px;font-weight:700;">Close</button>
           </div>
           <form id="afford-form">
-            <label for="afford-amount">Amount (UGX)</label>
+            <label for="afford-amount" data-i18n="amount_ugx">Amount (UGX)</label>
             <input id="afford-amount" name="amount" type="number" min="0.01" step="0.01" required>
             <div class="form-actions">
-              <button type="submit">Check</button>
+              <button type="submit" data-i18n="check">Check</button>
             </div>
           </form>
           <p id="afford-verdict" class="verdict hidden"></p>
@@ -549,14 +549,14 @@
       <div class="overlay hidden" id="allocate-overlay">
         <div class="card">
           <div class="card-head">
-            <h2>What should I do with this?</h2>
-            <button type="button" class="ghost" id="allocate-close" style="width:auto;padding:0.4rem 0.7rem;border-radius:8px;font-weight:700;">Close</button>
+            <h2 data-i18n="what_should_i_do">What should I do with this?</h2>
+            <button type="button" class="ghost" id="allocate-close" data-i18n="close" style="width:auto;padding:0.4rem 0.7rem;border-radius:8px;font-weight:700;">Close</button>
           </div>
           <form id="allocate-form">
-            <label for="allocate-amount">Income amount (UGX)</label>
+            <label for="allocate-amount" data-i18n="income_amount_ugx">Income amount (UGX)</label>
             <input id="allocate-amount" name="amount" type="number" min="0.01" step="0.01" required>
             <div class="form-actions">
-              <button type="submit">Suggest a split</button>
+              <button type="submit" data-i18n="suggest_split">Suggest a split</button>
             </div>
           </form>
           <p id="allocate-class" class="verdict hidden"></p>
@@ -569,28 +569,28 @@
       <div class="overlay hidden" id="record-overlay">
         <div class="card">
           <div class="card-head">
-            <h2 id="record-title">Record transaction</h2>
-            <button type="button" class="ghost" id="record-close" style="width:auto;padding:0.4rem 0.7rem;border-radius:8px;font-weight:700;">Close</button>
+            <h2 id="record-title" data-i18n="record_transaction">Record transaction</h2>
+            <button type="button" class="ghost" id="record-close" data-i18n="close" style="width:auto;padding:0.4rem 0.7rem;border-radius:8px;font-weight:700;">Close</button>
           </div>
           <form id="record-form">
             <input type="hidden" name="type" id="record-type">
 
-            <label for="record-amount">Amount (UGX)</label>
+            <label for="record-amount" data-i18n="amount_ugx">Amount (UGX)</label>
             <input id="record-amount" name="amount" type="number" min="0.01" step="0.01" required>
 
-            <label>Category</label>
+            <label data-i18n="category">Category</label>
             <input type="hidden" id="record-category" name="category">
             <div class="choices" id="record-category-choices"></div>
 
-            <label for="record-description">Description (optional)</label>
+            <label for="record-description" data-i18n="description_optional">Description (optional)</label>
             <input id="record-description" name="description">
 
-            <label for="record-date">Date</label>
+            <label for="record-date" data-i18n="date">Date</label>
             <input id="record-date" name="date" type="date" required>
 
             <div id="record-message" class="msg"></div>
             <div class="form-actions">
-              <button type="submit">Save</button>
+              <button type="submit" data-i18n="save">Save</button>
             </div>
           </form>
         </div>
@@ -622,6 +622,15 @@
       document.querySelectorAll("[data-i18n]").forEach((el) => {
         el.textContent = t(el.getAttribute("data-i18n"));
       });
+      const askInput = document.getElementById("ask-input");
+      if (askInput) askInput.placeholder = t("ask_placeholder");
+      const overlay = document.getElementById("record-overlay");
+      const recordType = document.getElementById("record-type");
+      if (recordType && recordType.value && overlay && !overlay.classList.contains("hidden")) {
+        fillCategories(recordType.value);
+        document.getElementById("record-title").textContent =
+          recordType.value === "income" ? t("record_income") : t("record_expense");
+      }
     }
 
     function syncLanguageControl() {
@@ -735,11 +744,7 @@
     }
 
     function categoryLabel(value) {
-      for (const id of ["income-category-options", "expense-category-options"]) {
-        const option = document.getElementById(id).querySelector('option[value="' + value + '"]');
-        if (option) return option.textContent;
-      }
-      return value;
+      return t("cat_" + value) || value;
     }
 
     async function loadGoalPreview() {
@@ -759,7 +764,7 @@
       document.getElementById("dash-goal-name").textContent = goal.name;
       document.getElementById("dash-goal-bar").style.width = percent + "%";
       document.getElementById("dash-goal-amounts").textContent =
-        formatAmount(goal.current_saved_amount) + " of " + formatAmount(goal.target_amount);
+        formatAmount(goal.current_saved_amount) + " " + t("of") + " " + formatAmount(goal.target_amount);
       document.getElementById("dash-goal-percent").textContent = Math.round(percent) + "%";
     }
 
@@ -776,7 +781,7 @@
       setup.classList.add("hidden");
       status.classList.remove("hidden");
       document.getElementById("dash-retirement-label").textContent =
-        "Retirement: " + (data.on_track ? "On track" : "Needs attention");
+        data.on_track ? t("retirement_on_track") : t("retirement_needs_attention");
     }
 
     function closeRetirementForm() {
@@ -787,10 +792,13 @@
     async function openRetirementForm() {
       retirementForm.reset();
       retirementMessage.className = "msg";
-      document.getElementById("retirement-form-title").textContent = "Set up your retirement plan";
+      const title = document.getElementById("retirement-form-title");
+      title.dataset.i18n = "setup_retirement";
+      title.textContent = t("setup_retirement");
       const { response, data: profile } = await apiFetch("/api/v1/retirement/profile/");
       if (response.ok) {
-        document.getElementById("retirement-form-title").textContent = "Update retirement plan";
+        title.dataset.i18n = "update_retirement";
+        title.textContent = t("update_retirement");
         document.getElementById("retirement-current-age").value = profile.current_age;
         document.getElementById("retirement-desired-age").value = profile.desired_retirement_age;
         document.getElementById("retirement-savings").value = profile.current_savings;
@@ -823,8 +831,8 @@
         return;
       }
       banner.textContent = due.length === 1
-        ? "You have 1 saving check-in due"
-        : "You have " + due.length + " saving check-ins due";
+        ? t("checkin_one")
+        : t("checkin_many").replace("{count}", due.length);
       banner.classList.remove("hidden");
     }
 
@@ -869,7 +877,7 @@
       const verdict = document.getElementById("allocate-class");
       const explanation = document.getElementById("allocate-explanation");
       const split = document.getElementById("allocate-split");
-      verdict.textContent = data.classification + " month";
+      verdict.textContent = data.classification + " " + t("month");
       verdict.className = "verdict " + (tone[data.classification] || "");
       explanation.textContent = data.explanation;
       explanation.classList.remove("hidden");
@@ -976,7 +984,7 @@
       document.getElementById(sourceId).querySelectorAll("option").forEach((option) => {
         const choice = document.createElement("button");
         choice.type = "button";
-        choice.textContent = option.textContent;
+        choice.textContent = t("cat_" + option.value) || option.textContent;
         choice.dataset.value = option.value;
         choice.addEventListener("click", () => {
           field.value = option.value;
@@ -996,6 +1004,8 @@
       recordForm.reset();
       recordMessage.className = "msg";
       document.getElementById("record-type").value = type;
+      document.getElementById("record-title").dataset.i18n =
+        type === "income" ? "record_income" : "record_expense";
       document.getElementById("record-title").textContent =
         type === "income" ? t("record_income") : t("record_expense");
       document.getElementById("record-date").value = new Date().toISOString().slice(0, 10);
@@ -1048,7 +1058,7 @@
         showDashboard(data);
       } catch (exc) {
         event.target.value = previous;
-        error.textContent = "Could not update language. Please try again.";
+        error.textContent = t("language_error");
         error.classList.remove("hidden");
       } finally {
         event.target.disabled = false;
@@ -1189,7 +1199,7 @@
       event.preventDefault();
       const category = document.getElementById("record-category").value;
       if (!category) {
-        recordMessage.textContent = "Choose a category.";
+        recordMessage.textContent = t("choose_category");
         recordMessage.className = "msg show err";
         return;
       }
