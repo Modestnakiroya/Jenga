@@ -26,9 +26,17 @@ class HomeView(TemplateView):
         return context
 
 
-class HowItWorksView(TemplateView):
-    template_name = "how_it_works.html"
+class PartnershipsView(TemplateView):
+    template_name = "partnerships.html"
 
 
 class ProfilePageView(TemplateView):
     template_name = "profile.html"
+
+
+class AssistantPageView(TemplateView):
+    template_name = "assistant.html"
+
+
+class PartnersView(TemplateView):
+    template_name = "partners.html"

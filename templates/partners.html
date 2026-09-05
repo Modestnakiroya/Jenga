@@ -1,0 +1,172 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Jenga — Partners</title>
+  <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700&display=swap" rel="stylesheet">
+  {% include "partials/design_system.html" %}
+  <style>
+    main { max-width: 1180px; margin: auto; padding: 0 1.25rem 4rem; }
+    .account-grid { display: grid; grid-template-columns: repeat(2,minmax(0,1fr)); gap: 1.25rem; }
+    .account-grid h2 { margin: 0.5rem 0; font-size: 1.35rem; }
+    .account-grid p { overflow-wrap: anywhere; }
+    .account-terms { display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; margin: 1.5rem 0; }
+    .account-terms div { background: var(--blue-soft); padding: 1rem; border-radius: 12px; }
+    .account-terms dt { color: var(--muted); font-size: 0.8rem; }
+    .account-terms dd { margin: 0.4rem 0 0; font-weight: 600; overflow-wrap: anywhere; }
+    .account-updated { color: var(--muted); font-size: 0.8rem; }
+    #partner-overlay .card { width: min(860px, 100%); padding: clamp(1.25rem, 3vw, 2rem); }
+    #partner-overlay .card-head { display: flex; align-items: center; justify-content: space-between; flex-wrap: nowrap; gap: 1rem; }
+    #partner-overlay h2 { margin: 0; }
+    #partner-close { flex-shrink: 0; }
+    #partner-form { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 0.5rem 1.5rem; margin-top: 1rem; }
+    .partner-field { min-width: 0; }
+    .partner-field input, .partner-field select { min-width: 0; max-width: 100%; }
+    #partner-message, .partner-form-actions { grid-column: 1 / -1; }
+    #partner-message { overflow-wrap: anywhere; margin: 0.75rem 0 0; }
+    #partner-message:empty { display: none; }
+    .partner-form-actions { display: flex; justify-content: flex-end; padding-top: 1rem; }
+    @media (max-width: 600px) {
+      #partner-overlay { padding: 0; }
+      #partner-overlay .card { width: 100%; height: 100dvh; max-height: 100dvh; border: 0; border-radius: 0; padding: max(1rem, env(safe-area-inset-top)) max(1rem, env(safe-area-inset-right)) max(1.5rem, env(safe-area-inset-bottom)) max(1rem, env(safe-area-inset-left)); }
+      #partner-overlay .card-head { position: sticky; top: -1rem; background: var(--card); z-index: 1; padding: 0.75rem 0; }
+      #partner-form { grid-template-columns: minmax(0, 1fr); gap: 0.25rem; }
+      .partner-form-actions button { width: 100%; }
+    }
+    #accounts-status a { display: inline-block; margin-top: 0.75rem; }
+    @media (max-width: 760px) { .account-grid { grid-template-columns: 1fr; } }
+    @media (max-width: 420px) { .account-terms { grid-template-columns: 1fr; } }
+  </style>
+</head>
+<body>
+  <a class="skip-link" href="#main-content">Skip to content</a>
+  <main id="main-content" tabindex="-1">
+    {% include "partials/navbar.html" %}
+    <p class="eyebrow">Your banks and SACCOs</p>
+    <div class="card-head"><h1>Partner accounts</h1><button type="button" class="primary-action" id="open-partner">Add partner account</button></div>
+    <p class="lead">See your accounts, their interest rates and the minimum amount for each deposit.</p>
+    <div id="accounts-status" class="empty" role="status" aria-live="polite">Loading your accounts...</div>
+    <div id="partner-accounts" class="account-grid"></div>
+    <p class="hint">These are recorded account terms, not live bank data. Rates and deposit requirements may change; check with the institution before depositing.</p>
+    <div id="partner-overlay" class="overlay hidden">
+      <div class="card">
+        <div class="card-head"><h2>Add partner account</h2><button type="button" class="ghost icon-close" id="partner-close" aria-label="Close add partner account form"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="m6 6 12 12M6 18 18 6"/></svg></button></div>
+        <p class="hint">Record an existing account and its terms. This does not open or link a bank account.</p>
+        <form id="partner-form">
+          <div class="partner-field">
+          <label for="institution-name">Bank or SACCO name</label><input id="institution-name" name="institution_name" maxlength="180" required>
+          </div>
+          <div class="partner-field">
+          <label for="institution-type">Institution type</label><select id="institution-type" name="institution_type"><option value="bank">Bank</option><option value="sacco">SACCO</option></select>
+          </div>
+          <div class="partner-field">
+          <label for="account-name">Account name</label><input id="account-name" name="account_name" maxlength="180" required>
+          </div>
+          <div class="partner-field">
+          <label for="account-digits">Last four account digits (optional)</label><input id="account-digits" name="account_last_four" inputmode="numeric" pattern="[0-9]{4}" maxlength="4">
+          </div>
+          <div class="partner-field">
+          <label for="account-currency">Currency</label><select id="account-currency" name="currency"><option>UGX</option><option>USD</option><option>KES</option></select>
+          </div>
+          <div class="partner-field">
+          <label for="account-rate">Interest rate (%) (optional)</label><input id="account-rate" name="interest_rate" type="number" min="0" max="100" step="0.001">
+          </div>
+          <div class="partner-field">
+          <label for="account-period">Interest period</label><select id="account-period" name="interest_period"><option value="annual">Per year</option><option value="monthly">Per month</option></select>
+          </div>
+          <div class="partner-field">
+          <label for="account-minimum">Minimum per deposit (optional)</label><input id="account-minimum" name="minimum_deposit" type="number" min="0" step="0.01">
+          </div>
+          <div class="partner-field">
+          <label for="account-terms-date">Terms updated on (optional)</label><input id="account-terms-date" name="terms_updated_on" type="date">
+          </div>
+          <p id="partner-message" role="status" aria-live="polite"></p>
+          <div class="partner-form-actions"><button type="submit" class="primary-action">Save account</button></div>
+        </form>
+      </div>
+    </div>
+  </main>
+  {% include "partials/session_client.html" %}
+  <script>
+    document.getElementById('page-menu-toggle').addEventListener('click', event => {
+      const nav = event.currentTarget.closest('nav');
+      event.currentTarget.setAttribute('aria-expanded', String(nav.classList.toggle('menu-open')));
+    });
+    document.getElementById('logout-button').addEventListener('click', () => {
+      sessionStorage.removeItem('jengaAccessToken'); sessionStorage.removeItem('jengaRefreshToken'); window.location.href = '/';
+    });
+    const accountList = document.getElementById('partner-accounts');
+    const accountStatus = document.getElementById('accounts-status');
+    function element(tag, text, className) {
+      const node = document.createElement(tag); node.textContent = text;
+      if (className) node.className = className;
+      return node;
+    }
+    function term(label, value) {
+      const group = document.createElement('div');
+      group.append(element('dt',label),element('dd',value)); return group;
+    }
+    async function loadAccounts() {
+      accountStatus.classList.remove('hidden');
+      accountStatus.textContent = 'Loading your accounts...';
+      try {
+        const response = await sessionFetch('/api/v1/partners/accounts/');
+        if (response.status === 401) {
+          accountStatus.textContent = 'Log in to view your partner accounts.';
+          const login = element('a','Go to log in'); login.href = '/?start=login'; accountStatus.append(document.createElement('br'),login); return;
+        }
+        if (!response.ok) throw new Error('Accounts unavailable');
+        const accounts = await response.json();
+        accountList.replaceChildren();
+        if (!accounts.length) { accountStatus.textContent = 'No partner accounts have been added to your profile yet.'; return; }
+        accountStatus.classList.add('hidden');
+        accounts.forEach(account => {
+          const card = element('article','','card');
+          card.append(element('p',account.institution_type === 'sacco' ? 'SACCO' : 'Bank','eyebrow'));
+          card.append(element('h2',account.institution_name));
+          card.append(element('p',account.account_name + (account.account_last_four ? ' · Ending ' + account.account_last_four : '')));
+          const terms = element('dl','','account-terms');
+          const rate = account.interest_rate === null ? 'Not provided' : Number(account.interest_rate).toLocaleString() + '% ' + (account.interest_period === 'monthly' ? 'per month' : 'per year');
+          const minimum = account.minimum_deposit === null ? 'Not provided' : account.currency + ' ' + Number(account.minimum_deposit).toLocaleString('en-UG',{minimumFractionDigits:2,maximumFractionDigits:2});
+          terms.append(term('Interest rate',rate),term('Minimum per deposit',minimum)); card.append(terms);
+          card.append(element('p',account.terms_updated_on ? 'Terms updated: ' + account.terms_updated_on : 'Terms update date not provided','account-updated'));
+          accountList.append(card);
+        });
+      } catch {
+        accountStatus.textContent = 'Could not load your accounts. ';
+        const retry = element('button','Try again','ghost'); retry.type = 'button'; retry.addEventListener('click',loadAccounts); accountStatus.append(retry);
+      }
+    }
+    const partnerOverlay = document.getElementById('partner-overlay');
+    const partnerForm = document.getElementById('partner-form');
+    const partnerMessage = document.getElementById('partner-message');
+    function closePartner() { partnerOverlay.classList.add('hidden'); document.body.classList.remove('modal-open'); }
+    document.getElementById('open-partner').addEventListener('click', () => {
+      partnerMessage.textContent = ''; partnerOverlay.classList.remove('hidden'); document.body.classList.add('modal-open');
+    });
+    document.getElementById('partner-close').addEventListener('click', closePartner);
+    partnerOverlay.addEventListener('click', event => { if (event.target === partnerOverlay) closePartner(); });
+    partnerForm.addEventListener('submit', async event => {
+      event.preventDefault();
+      const button = partnerForm.querySelector('button[type="submit"]');
+      if (button.disabled) return;
+      const payload = Object.fromEntries(new FormData(partnerForm));
+      for (const key of ['interest_rate','minimum_deposit','terms_updated_on']) if (!payload[key]) payload[key] = null;
+      button.disabled = true; partnerMessage.textContent = 'Saving...';
+      try {
+        const response = await sessionFetch('/api/v1/partners/accounts/', {method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(payload)});
+        const data = await response.json().catch(() => ({}));
+        if (!response.ok) {
+          partnerMessage.textContent = response.status === 401 ? 'Please log in before adding an account.' : Object.entries(data).map(([key,value]) => key + ': ' + (Array.isArray(value) ? value.join(' ') : value)).join(' ') || 'Could not save. Please try again.';
+          return;
+        }
+        partnerForm.reset(); closePartner(); await loadAccounts();
+      } catch { partnerMessage.textContent = 'Could not connect. Please try again.'; }
+      finally { button.disabled = false; }
+    });
+    loadAccounts();
+  </script>
+  {% include "partials/ui_behaviors.html" %}
+</body>
+</html>

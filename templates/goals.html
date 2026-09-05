@@ -71,9 +71,18 @@
     <h1>Savings goals</h1>
     <p class="lead">Track what you are saving toward.</p>
 
-    <div class="goals-layout">
+    <div class="card savings-overview">
+      <div><p class="metric">Current savings across your goals</p><p class="amount large" id="savings-total">Loading...</p><p class="hint" id="savings-count"></p></div>
+      <button type="button" class="primary-action" id="open-goal">Add savings goal</button>
+    </div>
+    <p id="goal-feedback" role="status" aria-live="polite"></p>
+    <section aria-label="Your savings goals">
+      <div id="goals-list"></div>
+      <p id="goals-empty" class="empty hidden">Your next milestone starts here. Add your first savings goal.</p>
+    </section>
+    <div class="overlay hidden" id="goal-overlay">
     <div class="card">
-      <h2 style="margin-top:0;font-size:1rem;">Add a goal</h2>
+      <div class="card-head"><h2 id="goal-dialog-title">Add a savings goal</h2><button type="button" class="ghost icon-close" id="goal-close" aria-label="Close add goal form"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="m6 6 12 12M6 18 18 6"/></svg></button></div>
       <form id="goal-form">
         <label for="goal-name">Name</label>
         <input id="goal-name" required>
@@ -99,13 +108,10 @@
       <div id="message" class="msg" role="status" aria-live="polite"></div>
     </div>
 
-    <section aria-label="Your savings goals">
-      <div id="goals-list"></div>
-      <p id="goals-empty" class="empty hidden">Your next milestone starts here. Add your first savings goal.</p>
-    </section>
     </div>
   </main>
 
+  {% include "partials/session_client.html" %}
   <script>
     const token = sessionStorage.getItem("jengaAccessToken");
     const list = document.getElementById("goals-list");
@@ -141,7 +147,17 @@
       }).join("\n");
     }
 
+    const goalOverlay = document.getElementById("goal-overlay");
+    function closeGoal() { goalOverlay.classList.add("hidden"); document.body.classList.remove("modal-open"); }
+    document.getElementById("open-goal").addEventListener("click", () => {
+      message.className = "msg";
+      goalOverlay.classList.remove("hidden"); document.body.classList.add("modal-open");
+    });
+    document.getElementById("goal-close").addEventListener("click", closeGoal);
+    goalOverlay.addEventListener("click", event => { if (event.target === goalOverlay) closeGoal(); });
     function renderGoals(goals) {
+      document.getElementById("savings-total").textContent = formatAmount(goals.reduce((total, goal) => total + Number(goal.current_saved_amount), 0));
+      document.getElementById("savings-count").textContent = goals.length + " savings goals";
       list.replaceChildren();
       empty.classList.toggle("hidden", goals.length > 0);
       goals.forEach((goal) => {
@@ -171,15 +187,17 @@
     }
 
     async function loadGoals() {
-      if (!token) {
+      if (!sessionStorage.getItem("jengaAccessToken") && !sessionStorage.getItem("jengaRefreshToken")) {
+        document.getElementById("savings-total").textContent = "Log in to view";
         empty.textContent = "Log in from the home page to see your goals.";
         empty.classList.remove("hidden");
         return;
       }
-      const response = await fetch("/api/v1/goals/", {
+      const response = await sessionFetch("/api/v1/goals/", {
         headers: { Authorization: "Bearer " + token },
       });
       if (!response.ok) {
+        document.getElementById("savings-total").textContent = "Unavailable";
         empty.textContent = "Could not load goals. Log in again from the home page.";
         empty.classList.remove("hidden");
         return;
@@ -189,7 +207,7 @@
 
     document.getElementById("goal-form").addEventListener("submit", async (event) => {
       event.preventDefault();
-      if (!token) {
+      if (!sessionStorage.getItem("jengaAccessToken") && !sessionStorage.getItem("jengaRefreshToken")) {
         showMessage("Log in from the home page first.", false);
         return;
       }
@@ -201,7 +219,11 @@
       };
       const targetDate = document.getElementById("goal-date").value;
       if (targetDate) payload.target_date = targetDate;
-      const response = await fetch("/api/v1/goals/", {
+      const button = event.target.querySelector('button[type="submit"]');
+      if (button.disabled) return;
+      button.disabled = true;
+      try {
+      const response = await sessionFetch("/api/v1/goals/", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
@@ -215,11 +237,20 @@
         return;
       }
       document.getElementById("goal-form").reset();
-      showMessage("Goal saved.", true);
+      closeGoal();
+      document.getElementById("goal-feedback").textContent = "Goal saved.";
       await loadGoals();
+      } catch {
+        if (goalOverlay.classList.contains("hidden")) document.getElementById("goal-feedback").textContent = "Goal saved. Refresh to reload your savings.";
+        else showMessage("Could not save. Check your connection and try again.", false);
+      } finally { button.disabled = false; }
     });
 
-    loadGoals();
+    loadGoals().catch(() => {
+      document.getElementById("savings-total").textContent = "Unavailable";
+      empty.textContent = "Could not load savings. Please refresh to try again.";
+      empty.classList.remove("hidden");
+    });
   </script>
   {% include "partials/ui_behaviors.html" %}
 </body>
