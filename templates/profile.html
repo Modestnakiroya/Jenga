@@ -8,24 +8,13 @@
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700;800&display=swap" rel="stylesheet">
   <style>
-    :root { --blue: #164889; --blue-bright: #1c62bb; --ink: #10233f; --muted: #64748b; --line: #dbe5f0; --bg: #f4f8fc; --soft: #eaf3ff; }
-    * { box-sizing: border-box; }
-    body { margin: 0; color: var(--ink); font-family: "Poppins", "Segoe UI", sans-serif; background: linear-gradient(145deg, #f8fbff, var(--bg) 55%, #eaf3ff); }
     main { max-width: 760px; margin: 0 auto; padding: 0 1.25rem 4rem; }
-    .page-nav { display: flex; align-items: center; justify-content: space-between; gap: 1rem; margin: 0 calc(50% - 50vw) 2.5rem; padding: 1rem max(1.25rem, calc((100vw - 760px) / 2 + 1.25rem)); background: linear-gradient(105deg, var(--blue-bright), var(--blue)); }
-    .brand { color: white; font-size: 1.3rem; font-weight: 900; letter-spacing: -0.05em; text-decoration: none; }
-    .brand span { color: #bfe3ff; }
-    .nav-links { display: flex; align-items: center; gap: 1rem; }
-    .nav-links a { color: rgba(255,255,255,0.9); font-size: 0.82rem; font-weight: 700; text-decoration: none; }
-    .logout-button { display: inline-flex; align-items: center; justify-content: center; width: 2.35rem; height: 2.35rem; border: 1px solid rgba(255,255,255,0.55); border-radius: 8px; background: transparent; color: white; cursor: pointer; font: inherit; padding: 0; }
-    .logout-icon { display: inline-flex; width: 1.2rem; height: 1.2rem; line-height: 1; }
-    .logout-icon svg { width: 100%; height: 100%; fill: none; stroke: currentColor; stroke-linecap: round; stroke-linejoin: round; stroke-width: 2; }
     .profile-head { display: flex; align-items: center; gap: 1rem; margin-bottom: 2rem; }
-    .avatar { display: grid; flex: 0 0 auto; width: 4.4rem; height: 4.4rem; place-items: center; border: 5px solid #c7e4ff; border-radius: 50%; background: linear-gradient(145deg, #1c62bb, #164889); color: white; font-size: 1.45rem; font-weight: 800; }
-    .eyebrow { margin: 0 0 0.3rem; color: var(--blue-bright); font-size: 0.73rem; font-weight: 800; letter-spacing: 0.12em; text-transform: uppercase; }
+    .avatar { display: grid; flex: 0 0 auto; width: 4.4rem; height: 4.4rem; place-items: center; border: 5px solid var(--blue-soft); border-radius: 50%; background: linear-gradient(145deg, var(--accent), var(--navy)); color: white; font-size: 1.45rem; font-weight: 600; }
+    .eyebrow { margin: 0 0 0.3rem; color: var(--blue-bright); font-size: 0.73rem; font-weight: 600; letter-spacing: 0.12em; text-transform: uppercase; }
     h1 { margin: 0; color: var(--blue); font-size: clamp(1.7rem, 4vw, 2.5rem); line-height: 1.15; }
     .profile-subtitle { margin: 0.4rem 0 0; color: var(--muted); font-size: 0.87rem; }
-    .balance-panel { margin-bottom: 1rem; padding: 1.4rem; border-radius: 18px; background: linear-gradient(135deg, #1c62bb, #164889); box-shadow: 0 18px 40px rgba(21, 66, 122, 0.2); color: white; }
+    .balance-panel { margin-bottom: 1rem; padding: 1.4rem; border-radius: 18px; background: linear-gradient(135deg, var(--accent), var(--navy)); box-shadow: 0 18px 40px rgba(21, 66, 122, 0.2); color: white; }
     .balance-panel p { margin: 0; color: rgba(255,255,255,0.72); font-size: 0.78rem; }
     .balance-panel strong { display: block; margin-top: 0.35rem; font-size: 1.55rem; }
     .section { margin-top: 1rem; padding: 1.2rem; border: 1px solid var(--line); border-radius: 14px; background: rgba(255,255,255,0.88); box-shadow: 0 15px 35px rgba(21, 66, 122, 0.07); }
@@ -40,30 +29,19 @@
     .menu a span:last-child { color: var(--blue-bright); font-size: 1.2rem; }
     .empty { padding: 2rem 0; color: var(--muted); text-align: center; }
     .hidden { display: none !important; }
-    .sr-only { position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip: rect(0, 0, 0, 0); white-space: nowrap; border: 0; }
-    .menu-toggle { display: none; border: 1px solid rgba(255,255,255,0.55); border-radius: 8px; background: transparent; color: white; cursor: pointer; font-size: 1.25rem; line-height: 1; padding: 0.45rem 0.6rem; }
-    @media (min-width: 561px) { .menu-toggle { display: none !important; } }
-    @media (max-width: 560px) { body { padding-bottom: 3rem; } .page-nav { position: relative; right: auto; bottom: auto; left: auto; margin: 0 calc(50% - 50vw) 2rem; padding: 0.8rem 1.25rem; } .page-nav .brand { display: block; } .page-nav .menu-toggle { display: block; } .page-nav .nav-links { display: none; position: absolute; z-index: 12; top: 100%; right: 1rem; left: 1rem; padding: 0.5rem; border-radius: 10px; background: #164889; box-shadow: 0 14px 30px rgba(12, 35, 66, 0.2); } .page-nav.menu-open .nav-links { display: flex; flex-direction: column; align-items: stretch; gap: 0.15rem; } .page-nav .nav-links a, .page-nav .logout-button { display: block; width: 100%; height: auto; padding: 0.75rem; border: 0; border-radius: 0; background: transparent; color: white; font-size: 0.8rem; text-align: left; } .page-nav .logout-icon { font-size: 1rem; } }
-    button, input, select, textarea { font-family: inherit; }
     h1, h2, h3 { font-weight: 600; }
-    .nav-links a, .menu a, .logout-button { font-weight: 500; }
-    @media (max-width: 560px) { body { padding-bottom: 5.5rem; } .page-nav { position: fixed; z-index: 10; right: 0; bottom: 0; left: 0; margin: 0; padding: 0.65rem 0.75rem; border-top: 1px solid rgba(255,255,255,0.2); } .page-nav .brand { display: none; } .page-nav .nav-links { width: 100%; justify-content: space-around; } .page-nav .nav-links a { display: inline-flex; flex: 1; flex-direction: column; align-items: center; gap: 0.25rem; font-size: 0.63rem; text-align: center; } .page-nav .nav-links a::before { content: "⌂"; font-size: 1.15rem; line-height: 1; } .page-nav .nav-links a:nth-child(2)::before { content: "i"; } .page-nav .logout-button { flex: 1; width: auto; height: auto; flex-direction: column; border: 0; font-size: 0.63rem; } .page-nav .logout-button::after { content: ""; } .details { grid-template-columns: 1fr; } .profile-head { align-items: flex-start; } }
+    .menu a { font-weight: 500; }
+    @media (max-width: 560px) {
+.details { grid-template-columns: 1fr; }
+    .profile-head { align-items: flex-start; }
+}
   </style>
+  {% include "partials/design_system.html" %}
 </head>
-<body>
-  <main>
-    <nav class="page-nav" aria-label="Signed-in navigation">
-      <a class="brand" href="/">jenga<span>.</span></a>
-      <button type="button" class="menu-toggle" id="page-menu-toggle" aria-expanded="false" aria-controls="page-links">☰</button>
-      <div class="nav-links" id="page-links">
-        <a href="/">Dashboard</a>
-        <a href="/goals/">Goals</a>
-        <a href="/commitments/">Commitments</a>
-        <a href="/how-it-works/">How it works</a>
-        <a href="/profile/">Profile</a>
-        <button type="button" class="logout-button" id="logout-button" title="Log out" aria-label="Log out"><span class="logout-icon" aria-hidden="true"><svg viewBox="0 0 24 24" focusable="false"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><path d="m16 17 5-5-5-5"/><path d="M21 12H9"/></svg></span><span class="sr-only">Log out</span></button>
-      </div>
-    </nav>
+<body class="page-profile">
+  <a class="skip-link" href="#main-content">Skip to content</a>
+  <main id="main-content" tabindex="-1">
+    {% include "partials/navbar.html" %}
 
     <div id="profile-content" class="hidden">
       <header class="profile-head">
@@ -112,5 +90,6 @@
     }
     loadProfile();
   </script>
+  {% include "partials/ui_behaviors.html" %}
 </body>
 </html>
