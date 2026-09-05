@@ -187,7 +187,6 @@ class AccountsAPITests(APITestCase):
         )
         self.assertNotIn("password", response.data)
 
-
 class TokenLifecycleTests(APITestCase):
     def test_expired_access_token_can_be_refreshed_for_profile_access(self):
         from datetime import timedelta

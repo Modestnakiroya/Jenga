@@ -84,26 +84,26 @@
     <div class="card">
       <div class="card-head"><h2 id="goal-dialog-title">Add a savings goal</h2><button type="button" class="ghost icon-close" id="goal-close" aria-label="Close add goal form"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="m6 6 12 12M6 18 18 6"/></svg></button></div>
       <form id="goal-form">
-        <label for="goal-name">Name</label>
+        <label for="goal-name" data-i18n="goal_name">Name</label>
         <input id="goal-name" required>
 
-        <label for="goal-type">Type</label>
+        <label for="goal-type" data-i18n="goal_type_label">Type</label>
         <select id="goal-type" required>
           {% for value, label in goal_types %}
             <option value="{{ value }}">{{ label }}</option>
           {% endfor %}
         </select>
 
-        <label for="goal-target">Target amount (UGX)</label>
+        <label for="goal-target" data-i18n="target_amount">Target amount (UGX)</label>
         <input id="goal-target" type="number" min="0.01" step="0.01" required>
 
-        <label for="goal-saved">Already saved (UGX)</label>
+        <label for="goal-saved" data-i18n="already_saved">Already saved (UGX)</label>
         <input id="goal-saved" type="number" min="0" step="0.01" value="0">
 
-        <label for="goal-date">Target date (optional)</label>
+        <label for="goal-date" data-i18n="target_date_optional">Target date (optional)</label>
         <input id="goal-date" type="date">
 
-        <button type="submit">Save goal</button>
+        <button type="submit" data-i18n="save_goal">Save goal</button>
       </form>
       <div id="message" class="msg" role="status" aria-live="polite"></div>
     </div>
@@ -113,10 +113,28 @@
 
   {% include "partials/session_client.html" %}
   <script>
-    const token = sessionStorage.getItem("jengaAccessToken");
+    const DASHBOARD_LABELS = {{ dashboard_labels_json|safe }};
+    let currentLanguage = "english";
+    let accessToken = sessionStorage.getItem("jengaAccessToken") || "";
+    let refreshToken = sessionStorage.getItem("jengaRefreshToken") || "";
     const list = document.getElementById("goals-list");
     const empty = document.getElementById("goals-empty");
     const message = document.getElementById("message");
+
+    function t(key) {
+      const pack = DASHBOARD_LABELS[currentLanguage] || DASHBOARD_LABELS.english || {};
+      return pack[key] || (DASHBOARD_LABELS.english || {})[key] || key;
+    }
+
+    function applyLabels() {
+      document.querySelectorAll("[data-i18n]").forEach((el) => {
+        el.textContent = t(el.getAttribute("data-i18n"));
+      });
+      document.querySelectorAll("#goal-type option").forEach((option) => {
+        option.textContent = t("goal_type_" + option.value);
+      });
+      document.title = "Jenga — " + t("savings_goals");
+    }
 
     document.getElementById("logout-button").addEventListener("click", () => {
       sessionStorage.removeItem("jengaAccessToken");
@@ -139,12 +157,76 @@
     }
 
     function fieldErrors(data) {
-      if (!data || typeof data !== "object") return "Something went wrong.";
+      if (!data || typeof data !== "object") return t("something_wrong");
       if (data.detail) return typeof data.detail === "string" ? data.detail : JSON.stringify(data.detail);
       return Object.entries(data).map(([key, value]) => {
         const text = Array.isArray(value) ? value.join(" ") : value;
         return key + ": " + text;
       }).join("\n");
+    }
+
+    async function refreshAccessToken() {
+      if (!refreshToken) return false;
+      const response = await fetch("/api/v1/auth/refresh/", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ refresh: refreshToken }),
+      });
+      const data = await response.json().catch(() => ({}));
+      if (!response.ok || !data.access) return false;
+      accessToken = data.access;
+      sessionStorage.setItem("jengaAccessToken", accessToken);
+      if (data.refresh) {
+        refreshToken = data.refresh;
+        sessionStorage.setItem("jengaRefreshToken", refreshToken);
+      }
+      return true;
+    }
+
+    async function apiFetch(url, options) {
+      const headers = Object.assign(
+        { Authorization: "Bearer " + accessToken },
+        (options && options.headers) || {}
+      );
+      let response = await fetch(url, Object.assign({}, options || {}, { headers: headers }));
+      if (response.status === 401 && (await refreshAccessToken())) {
+        headers.Authorization = "Bearer " + accessToken;
+        response = await fetch(url, Object.assign({}, options || {}, { headers: headers }));
+      }
+      const data = await response.json().catch(() => ({}));
+      return { response: response, data: data };
+    }
+
+    async function refreshAccessToken() {
+      if (!refreshToken) return false;
+      const response = await fetch("/api/v1/auth/refresh/", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ refresh: refreshToken }),
+      });
+      const data = await response.json().catch(() => ({}));
+      if (!response.ok || !data.access) return false;
+      accessToken = data.access;
+      sessionStorage.setItem("jengaAccessToken", accessToken);
+      if (data.refresh) {
+        refreshToken = data.refresh;
+        sessionStorage.setItem("jengaRefreshToken", refreshToken);
+      }
+      return true;
+    }
+
+    async function apiFetch(url, options) {
+      const headers = Object.assign(
+        { Authorization: "Bearer " + accessToken },
+        (options && options.headers) || {}
+      );
+      let response = await fetch(url, Object.assign({}, options || {}, { headers: headers }));
+      if (response.status === 401 && (await refreshAccessToken())) {
+        headers.Authorization = "Bearer " + accessToken;
+        response = await fetch(url, Object.assign({}, options || {}, { headers: headers }));
+      }
+      const data = await response.json().catch(() => ({}));
+      return { response: response, data: data };
     }
 
     const goalOverlay = document.getElementById("goal-overlay");
@@ -160,6 +242,7 @@
       document.getElementById("savings-count").textContent = goals.length + " savings goals";
       list.replaceChildren();
       empty.classList.toggle("hidden", goals.length > 0);
+      if (!goals.length) empty.textContent = t("no_goals_yet");
       goals.forEach((goal) => {
         const card = document.createElement("div");
         card.className = "card";
@@ -168,7 +251,7 @@
         title.textContent = goal.name;
         const meta = document.createElement("p");
         meta.className = "meta";
-        meta.textContent = goal.goal_type.replaceAll("_", " ") + " · " + goal.status;
+        meta.textContent = t("goal_type_" + goal.goal_type) + " · " + t("status_" + goal.status);
         const bar = document.createElement("div");
         bar.className = "bar";
         const fill = document.createElement("span");
@@ -177,7 +260,7 @@
         const amounts = document.createElement("div");
         amounts.className = "goal-meta";
         const saved = document.createElement("span");
-        saved.textContent = formatAmount(goal.current_saved_amount) + " of " + formatAmount(goal.target_amount);
+        saved.textContent = formatAmount(goal.current_saved_amount) + " " + t("of") + " " + formatAmount(goal.target_amount);
         const pct = document.createElement("span");
         pct.textContent = Math.round(Number(goal.progress_percentage)) + "%";
         amounts.append(saved, pct);
@@ -202,7 +285,7 @@
         empty.classList.remove("hidden");
         return;
       }
-      renderGoals(await response.json());
+      renderGoals(Array.isArray(data) ? data : []);
     }
 
     document.getElementById("goal-form").addEventListener("submit", async (event) => {
@@ -225,13 +308,9 @@
       try {
       const response = await sessionFetch("/api/v1/goals/", {
         method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: "Bearer " + token,
-        },
+        headers: { "Content-Type": "application/json" },
         body: JSON.stringify(payload),
       });
-      const data = await response.json().catch(() => ({}));
       if (!response.ok) {
         showMessage(fieldErrors(data), false);
         return;

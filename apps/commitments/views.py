@@ -4,6 +4,8 @@ from rest_framework.decorators import action
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 
+from apps.assistant.translations import dashboard_labels_json
+
 from apps.commitments.models import Commitment
 from apps.commitments.serializers import (
     AdjustCommitmentSerializer,
@@ -57,3 +59,8 @@ class CommitmentViewSet(
 
 class CommitmentsPageView(TemplateView):
     template_name = "commitments.html"
+
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        context["dashboard_labels_json"] = dashboard_labels_json()
+        return context
