@@ -47,6 +47,11 @@ process.stdin.on('end', async () => {
         const data = url.includes('auth/login') ? {access:'test-access',refresh:'test-refresh'} : profile;
         return {ok:true,status:200,json:async()=>data};
       },
+      currentLanguage: 'english',
+      t: (key) => key,
+      applyLabels() {},
+      rememberLanguage(code) { this.currentLanguage = String(code || 'english').toLowerCase(); },
+      localStorage: { getItem() { return null; }, setItem() {}, removeItem() {} },
     });
     vm.runInContext(script, context);
     if (entry === 'signup') {

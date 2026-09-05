@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>Jenga — AI assistant</title>
+  <title data-i18n-title="page_title_assistant">Jenga — AI assistant</title>
   <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700&display=swap" rel="stylesheet">
   {% include "partials/design_system.html" %}
   <style>
@@ -19,26 +19,27 @@
   </style>
 </head>
 <body>
-  <a class="skip-link" href="#main-content">Skip to content</a>
+  <a class="skip-link" href="#main-content" data-i18n="skip_to_content">Skip to content</a>
   <main id="main-content" tabindex="-1">
     {% include "partials/navbar.html" %}
     <section class="chat-shell">
-      <h1>Ask Jenga</h1>
-      <p class="lead">Your AI assistant for business money. Ask about income, spending, savings or your next decision.</p>
+      <h1 data-i18n="ask_jenga">Ask Jenga</h1>
+      <p class="lead" data-i18n="assistant_lead">Your AI assistant for business money. Ask about income, spending, savings or your next decision.</p>
       <div class="card">
         <div class="chat-log" id="chat-log" role="log" aria-label="Conversation" aria-live="polite">
-          <p class="chat-message"><strong>Jenga</strong>What would you like help with today?</p>
+          <p class="chat-message"><strong>Jenga</strong><span data-i18n="assistant_greeting">What would you like help with today?</span></p>
         </div>
         <form class="chat-compose" id="chat-form">
-          <label for="chat-input">Your message</label>
-          <textarea id="chat-input" required maxlength="2000" rows="2" placeholder="For example: How much did I spend this week?"></textarea>
-          <div class="chat-actions"><button class="primary-action" type="submit">Send message</button></div>
+          <label for="chat-input" data-i18n="your_message">Your message</label>
+          <textarea id="chat-input" required maxlength="2000" rows="2" data-i18n-placeholder="assistant_placeholder" placeholder="For example: How much did I spend this week?"></textarea>
+          <div class="chat-actions"><button class="primary-action" type="submit" data-i18n="send_message">Send message</button></div>
         </form>
         <p id="chat-status" role="status" aria-live="polite"></p>
       </div>
     </section>
   </main>
   {% include "partials/session_client.html" %}
+  {% include "partials/i18n.html" %}
   <script>
     document.getElementById('page-menu-toggle').addEventListener('click', event => {
       const nav = event.currentTarget.closest('nav');
@@ -62,21 +63,22 @@
       const text = input.value.trim();
       const button = event.target.querySelector('button');
       if (!text || button.disabled) return;
-      button.disabled = true; chatStatus.textContent = 'Jenga is responding...';
+      button.disabled = true; chatStatus.textContent = t('assistant_thinking');
       try {
         const response = await sessionFetch('/api/v1/assistant/ask/', {
           method: 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify({message:text})
         });
         const data = await response.json().catch(() => ({}));
         if (!response.ok) {
-          chatStatus.textContent = response.status === 401 ? 'Please log in from the dashboard to chat.' : 'Jenga could not respond. Please try again shortly.';
+          chatStatus.textContent = response.status === 401 ? t('assistant_login') : t('assistant_error');
           return;
         }
-        appendMessage('You', text); appendMessage('Jenga', data.reply || 'No response received. Please try again.');
+        appendMessage(t('you'), text); appendMessage('Jenga', data.reply || t('assistant_no_reply'));
         input.value = ''; chatStatus.textContent = '';
-      } catch { chatStatus.textContent = 'Connection interrupted. Your message is still here so you can try again.'; }
+      } catch { chatStatus.textContent = t('assistant_connection'); }
       finally { button.disabled = false; input.focus(); }
     });
+    loadPreferredLanguage();
   </script>
   {% include "partials/ui_behaviors.html" %}
 </body>

@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>Jenga — Profile</title>
+  <title data-i18n-title="page_title_profile">Jenga — Profile</title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700;800&display=swap" rel="stylesheet">
@@ -39,21 +39,23 @@
   {% include "partials/design_system.html" %}
 </head>
 <body class="page-profile">
-  <a class="skip-link" href="#main-content">Skip to content</a>
+  <a class="skip-link" href="#main-content" data-i18n="skip_to_content">Skip to content</a>
   <main id="main-content" tabindex="-1">
     {% include "partials/navbar.html" %}
 
     <div id="profile-content" class="hidden">
       <header class="profile-head">
         <div class="avatar" id="profile-avatar" aria-hidden="true"></div>
-        <div><p class="eyebrow">Your profile</p><h1 id="profile-name"></h1><p class="profile-subtitle" id="profile-business"></p></div>
+        <div><p class="eyebrow" data-i18n="your_profile">Your profile</p><h1 id="profile-name"></h1><p class="profile-subtitle" id="profile-business"></p></div>
       </header>
-      <section class="balance-panel"><p>Business rhythm</p><strong id="profile-frequency"></strong><p id="profile-language"></p></section>
-      <section class="section"><h2>Account details</h2><div class="details"><div class="detail"><small>Phone number</small><strong id="profile-phone"></strong></div><div class="detail"><small>Email</small><strong id="profile-email"></strong></div><div class="detail"><small>Business type</small><strong id="profile-type"></strong></div><div class="detail"><small>Started</small><strong id="profile-started"></strong></div></div></section>
-      <section class="section"><h2>Manage your Jenga</h2><div class="menu"><a href="/goals/"><span>Savings goals</span><span aria-hidden="true">›</span></a><a href="/partners/"><span>Partner accounts</span><span aria-hidden="true">›</span></a><a href="/#how-it-works"><span>How Jenga works</span><span aria-hidden="true">›</span></a></div></section>
+      <section class="balance-panel"><p data-i18n="business_rhythm">Business rhythm</p><strong id="profile-frequency"></strong><p id="profile-language"></p></section>
+      <section class="section"><h2 data-i18n="account_details">Account details</h2><div class="details"><div class="detail"><small data-i18n="phone_number">Phone number</small><strong id="profile-phone"></strong></div><div class="detail"><small data-i18n="email">Email</small><strong id="profile-email"></strong></div><div class="detail"><small data-i18n="business_type_label">Business type</small><strong id="profile-type"></strong></div><div class="detail"><small data-i18n="started">Started</small><strong id="profile-started"></strong></div></div></section>
+      <section class="section"><h2 data-i18n="manage_your_jenga">Manage your Jenga</h2><div class="menu"><a href="/goals/"><span data-i18n="savings_goals">Savings goals</span><span aria-hidden="true">›</span></a><a href="/partners/"><span data-i18n="partner_accounts">Partner accounts</span><span aria-hidden="true">›</span></a><a href="/#how-it-works"><span data-i18n="how_jenga_works">How Jenga works</span><span aria-hidden="true">›</span></a></div></section>
     </div>
-    <p class="empty" id="profile-message">Log in from the dashboard to view your profile.</p>
+    <p class="empty" id="profile-message" data-i18n="login_to_view_profile">Log in from the dashboard to view your profile.</p>
   </main>
+  {% include "partials/session_client.html" %}
+  {% include "partials/i18n.html" %}
   <script>
     const token = sessionStorage.getItem("jengaAccessToken");
     const content = document.getElementById("profile-content");
@@ -68,23 +70,29 @@
       const expanded = nav.classList.toggle("menu-open");
       event.currentTarget.setAttribute("aria-expanded", String(expanded));
     });
-    function label(value) { return String(value || "Not set").replaceAll("_", " ").replace(/\b\w/g, (letter) => letter.toUpperCase()); }
     function initials(name) { return String(name || "J").trim().split(/\s+/).slice(0, 2).map((part) => part[0]).join("").toUpperCase(); }
+    function languageName(value) {
+      const names = { english: "English", luganda: "Luganda", runyankole: "Runyankole", acholi: "Acholi", ateso: "Ateso" };
+      return names[(value || "").toLowerCase()] || t("not_set");
+    }
     async function loadProfile() {
-      if (!token) return;
-      const response = await fetch("/api/v1/profile/", { headers: { Authorization: "Bearer " + token } });
-      if (!response.ok) { message.textContent = "Your session expired. Log in again from the dashboard."; return; }
+      await loadPreferredLanguage();
+      if (!token && !sessionStorage.getItem("jengaRefreshToken")) return;
+      const response = await sessionFetch("/api/v1/profile/");
+      if (!response.ok) { message.textContent = t("session_expired"); return; }
       const profile = await response.json();
+      currentLanguage = (profile.preferred_language || currentLanguage || "english").toLowerCase();
+      applyLabels();
       const business = profile.business_profile || {};
       document.getElementById("profile-avatar").textContent = initials(profile.full_name);
-      document.getElementById("profile-name").textContent = profile.full_name || "Jenga member";
-      document.getElementById("profile-business").textContent = business.business_name || "Your business profile";
-      document.getElementById("profile-frequency").textContent = label(business.tracking_frequency) + " tracking";
-      document.getElementById("profile-language").textContent = "Preferred language: " + label(profile.preferred_language);
-      document.getElementById("profile-phone").textContent = profile.phone_number || "Not set";
-      document.getElementById("profile-email").textContent = profile.email || "Not set";
-      document.getElementById("profile-type").textContent = label(business.business_type);
-      document.getElementById("profile-started").textContent = business.date_started || "Not set";
+      document.getElementById("profile-name").textContent = profile.full_name || t("jenga_member");
+      document.getElementById("profile-business").textContent = business.business_name || t("your_business_profile");
+      document.getElementById("profile-frequency").textContent = t(business.tracking_frequency || "weekly") + " " + t("tracking_suffix");
+      document.getElementById("profile-language").textContent = t("preferred_language_prefix") + " " + languageName(profile.preferred_language);
+      document.getElementById("profile-phone").textContent = profile.phone_number || t("not_set");
+      document.getElementById("profile-email").textContent = profile.email || t("not_set");
+      document.getElementById("profile-type").textContent = String(business.business_type || t("not_set")).replaceAll("_", " ");
+      document.getElementById("profile-started").textContent = business.date_started || t("not_set");
       content.classList.remove("hidden");
       message.classList.add("hidden");
     }

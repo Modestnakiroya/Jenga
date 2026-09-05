@@ -6,7 +6,7 @@
       const toggle = nav.querySelector('.menu-toggle');
       if (toggle) {
         toggle.setAttribute('aria-expanded', 'false');
-        toggle.setAttribute('aria-label', 'Open navigation');
+        toggle.setAttribute('aria-label', typeof t === 'function' ? t('nav_open') : 'Open navigation');
         if (restoreFocus) toggle.focus();
       }
     };
@@ -20,7 +20,12 @@
         const toggle = event.target.closest('.menu-toggle');
         if (toggle) {
           // Page handlers toggle the menu before this bubbling listener runs.
-          toggle.setAttribute('aria-label', nav.classList.contains('menu-open') ? 'Close navigation' : 'Open navigation');
+          toggle.setAttribute(
+            'aria-label',
+            nav.classList.contains('menu-open')
+              ? (typeof t === 'function' ? t('nav_close') : 'Close navigation')
+              : (typeof t === 'function' ? t('nav_open') : 'Open navigation')
+          );
         } else if (event.target.closest('a, button')) {
           closeMenu(nav);
         }

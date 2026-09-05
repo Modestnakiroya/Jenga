@@ -435,6 +435,13 @@ class DashboardTranslationTests(SimpleTestCase):
         self.assertNotEqual(luganda["savings_goals"], ENGLISH_LABELS["savings_goals"])
         self.assertNotEqual(luganda["goal_type_emergency_fund"], ENGLISH_LABELS["goal_type_emergency_fund"])
         self.assertNotEqual(luganda["save_goal"], ENGLISH_LABELS["save_goal"])
+        self.assertNotEqual(luganda["nav_assistant"], ENGLISH_LABELS["nav_assistant"])
+        self.assertNotEqual(luganda["your_profile"], ENGLISH_LABELS["your_profile"])
+        self.assertNotEqual(luganda["partner_accounts"], ENGLISH_LABELS["partner_accounts"])
+        for language in SUPPORTED_LANGUAGES:
+            pack = DASHBOARD_LABELS[language]
+            self.assertTrue(pack["nav_dashboard"])
+            self.assertTrue(pack["page_title_assistant"])
 
 
 class HomePageI18nTests(APITestCase):
@@ -459,9 +466,25 @@ class HomePageI18nTests(APITestCase):
         self.assertIn("Ensawo y'akatyabaga", html)
         self.assertIn("Tereka goolo", html)
 
-    def test_commitments_page_embeds_luganda_labels(self):
-        response = self.client.get("/commitments/")
+    def test_assistant_page_embeds_luganda_labels(self):
+        response = self.client.get("/assistant/")
         self.assertEqual(response.status_code, 200)
         html = response.content.decode()
-        self.assertIn('data-i18n="saving_checkins"', html)
-        self.assertIn("Okukebera okutereka", html)
+        self.assertIn('data-i18n="ask_jenga"', html)
+        self.assertIn('data-i18n="nav_assistant"', html)
+        self.assertIn("Omuyambi wa AI", html)
+        self.assertIn("Buza Jenga", html)
+
+    def test_partners_page_embeds_luganda_labels(self):
+        response = self.client.get("/partners/")
+        self.assertEqual(response.status_code, 200)
+        html = response.content.decode()
+        self.assertIn('data-i18n="partner_accounts"', html)
+        self.assertIn("Akaawunti z'abakolagana", html)
+
+    def test_profile_page_embeds_luganda_labels(self):
+        response = self.client.get("/profile/")
+        self.assertEqual(response.status_code, 200)
+        html = response.content.decode()
+        self.assertIn('data-i18n="your_profile"', html)
+        self.assertIn("Profailo yo", html)

@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>Jenga — Savings goals</title>
+  <title data-i18n-title="page_title_goals">Jenga — Savings goals</title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700;800&display=swap" rel="stylesheet">
@@ -65,24 +65,24 @@
   {% include "partials/design_system.html" %}
 </head>
 <body class="page-goals">
-  <a class="skip-link" href="#main-content">Skip to content</a>
+  <a class="skip-link" href="#main-content" data-i18n="skip_to_content">Skip to content</a>
   <main id="main-content" tabindex="-1">
     {% include "partials/navbar.html" %}
-    <h1>Savings goals</h1>
-    <p class="lead">Track what you are saving toward.</p>
+    <h1 data-i18n="savings_goals">Savings goals</h1>
+    <p class="lead" data-i18n="savings_goals_lead">Track what you are saving toward.</p>
 
     <div class="card savings-overview">
-      <div><p class="metric">Current savings across your goals</p><p class="amount large" id="savings-total">Loading...</p><p class="hint" id="savings-count"></p></div>
-      <button type="button" class="primary-action" id="open-goal">Add savings goal</button>
+      <div><p class="metric" data-i18n="current_savings_across">Current savings across your goals</p><p class="amount large" id="savings-total">Loading...</p><p class="hint" id="savings-count"></p></div>
+      <button type="button" class="primary-action" id="open-goal" data-i18n="add_a_goal">Add a goal</button>
     </div>
     <p id="goal-feedback" role="status" aria-live="polite"></p>
     <section aria-label="Your savings goals">
       <div id="goals-list"></div>
-      <p id="goals-empty" class="empty hidden">Your next milestone starts here. Add your first savings goal.</p>
+      <p id="goals-empty" class="empty hidden" data-i18n="first_milestone">Your next milestone starts here. Add your first savings goal.</p>
     </section>
     <div class="overlay hidden" id="goal-overlay">
     <div class="card">
-      <div class="card-head"><h2 id="goal-dialog-title">Add a savings goal</h2><button type="button" class="ghost icon-close" id="goal-close" aria-label="Close add goal form"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="m6 6 12 12M6 18 18 6"/></svg></button></div>
+      <div class="card-head"><h2 id="goal-dialog-title" data-i18n="add_a_goal">Add a goal</h2><button type="button" class="ghost icon-close" id="goal-close" aria-label="Close add goal form" data-i18n-aria="close"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="m6 6 12 12M6 18 18 6"/></svg></button></div>
       <form id="goal-form">
         <label for="goal-name" data-i18n="goal_name">Name</label>
         <input id="goal-name" required>
@@ -112,29 +112,11 @@
   </main>
 
   {% include "partials/session_client.html" %}
+  {% include "partials/i18n.html" %}
   <script>
-    const DASHBOARD_LABELS = {{ dashboard_labels_json|safe }};
-    let currentLanguage = "english";
-    let accessToken = sessionStorage.getItem("jengaAccessToken") || "";
-    let refreshToken = sessionStorage.getItem("jengaRefreshToken") || "";
     const list = document.getElementById("goals-list");
     const empty = document.getElementById("goals-empty");
     const message = document.getElementById("message");
-
-    function t(key) {
-      const pack = DASHBOARD_LABELS[currentLanguage] || DASHBOARD_LABELS.english || {};
-      return pack[key] || (DASHBOARD_LABELS.english || {})[key] || key;
-    }
-
-    function applyLabels() {
-      document.querySelectorAll("[data-i18n]").forEach((el) => {
-        el.textContent = t(el.getAttribute("data-i18n"));
-      });
-      document.querySelectorAll("#goal-type option").forEach((option) => {
-        option.textContent = t("goal_type_" + option.value);
-      });
-      document.title = "Jenga — " + t("savings_goals");
-    }
 
     document.getElementById("logout-button").addEventListener("click", () => {
       sessionStorage.removeItem("jengaAccessToken");
@@ -165,70 +147,6 @@
       }).join("\n");
     }
 
-    async function refreshAccessToken() {
-      if (!refreshToken) return false;
-      const response = await fetch("/api/v1/auth/refresh/", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ refresh: refreshToken }),
-      });
-      const data = await response.json().catch(() => ({}));
-      if (!response.ok || !data.access) return false;
-      accessToken = data.access;
-      sessionStorage.setItem("jengaAccessToken", accessToken);
-      if (data.refresh) {
-        refreshToken = data.refresh;
-        sessionStorage.setItem("jengaRefreshToken", refreshToken);
-      }
-      return true;
-    }
-
-    async function apiFetch(url, options) {
-      const headers = Object.assign(
-        { Authorization: "Bearer " + accessToken },
-        (options && options.headers) || {}
-      );
-      let response = await fetch(url, Object.assign({}, options || {}, { headers: headers }));
-      if (response.status === 401 && (await refreshAccessToken())) {
-        headers.Authorization = "Bearer " + accessToken;
-        response = await fetch(url, Object.assign({}, options || {}, { headers: headers }));
-      }
-      const data = await response.json().catch(() => ({}));
-      return { response: response, data: data };
-    }
-
-    async function refreshAccessToken() {
-      if (!refreshToken) return false;
-      const response = await fetch("/api/v1/auth/refresh/", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ refresh: refreshToken }),
-      });
-      const data = await response.json().catch(() => ({}));
-      if (!response.ok || !data.access) return false;
-      accessToken = data.access;
-      sessionStorage.setItem("jengaAccessToken", accessToken);
-      if (data.refresh) {
-        refreshToken = data.refresh;
-        sessionStorage.setItem("jengaRefreshToken", refreshToken);
-      }
-      return true;
-    }
-
-    async function apiFetch(url, options) {
-      const headers = Object.assign(
-        { Authorization: "Bearer " + accessToken },
-        (options && options.headers) || {}
-      );
-      let response = await fetch(url, Object.assign({}, options || {}, { headers: headers }));
-      if (response.status === 401 && (await refreshAccessToken())) {
-        headers.Authorization = "Bearer " + accessToken;
-        response = await fetch(url, Object.assign({}, options || {}, { headers: headers }));
-      }
-      const data = await response.json().catch(() => ({}));
-      return { response: response, data: data };
-    }
-
     const goalOverlay = document.getElementById("goal-overlay");
     function closeGoal() { goalOverlay.classList.add("hidden"); document.body.classList.remove("modal-open"); }
     document.getElementById("open-goal").addEventListener("click", () => {
@@ -239,7 +157,7 @@
     goalOverlay.addEventListener("click", event => { if (event.target === goalOverlay) closeGoal(); });
     function renderGoals(goals) {
       document.getElementById("savings-total").textContent = formatAmount(goals.reduce((total, goal) => total + Number(goal.current_saved_amount), 0));
-      document.getElementById("savings-count").textContent = goals.length + " savings goals";
+      document.getElementById("savings-count").textContent = t("savings_goals_count", { count: goals.length });
       list.replaceChildren();
       empty.classList.toggle("hidden", goals.length > 0);
       if (!goals.length) empty.textContent = t("no_goals_yet");
@@ -271,17 +189,16 @@
 
     async function loadGoals() {
       if (!sessionStorage.getItem("jengaAccessToken") && !sessionStorage.getItem("jengaRefreshToken")) {
-        document.getElementById("savings-total").textContent = "Log in to view";
-        empty.textContent = "Log in from the home page to see your goals.";
+        document.getElementById("savings-total").textContent = t("login_to_view");
+        empty.textContent = t("login_to_see_goals");
         empty.classList.remove("hidden");
         return;
       }
-      const response = await sessionFetch("/api/v1/goals/", {
-        headers: { Authorization: "Bearer " + token },
-      });
+      const response = await sessionFetch("/api/v1/goals/");
+      const data = await response.json().catch(() => []);
       if (!response.ok) {
-        document.getElementById("savings-total").textContent = "Unavailable";
-        empty.textContent = "Could not load goals. Log in again from the home page.";
+        document.getElementById("savings-total").textContent = t("unavailable");
+        empty.textContent = t("could_not_load_goals");
         empty.classList.remove("hidden");
         return;
       }
@@ -291,7 +208,7 @@
     document.getElementById("goal-form").addEventListener("submit", async (event) => {
       event.preventDefault();
       if (!sessionStorage.getItem("jengaAccessToken") && !sessionStorage.getItem("jengaRefreshToken")) {
-        showMessage("Log in from the home page first.", false);
+        showMessage(t("login_first"), false);
         return;
       }
       const payload = {
@@ -311,23 +228,25 @@
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(payload),
       });
+      const data = await response.json().catch(() => ({}));
       if (!response.ok) {
         showMessage(fieldErrors(data), false);
         return;
       }
       document.getElementById("goal-form").reset();
+      applyLabels();
       closeGoal();
-      document.getElementById("goal-feedback").textContent = "Goal saved.";
+      document.getElementById("goal-feedback").textContent = t("goal_saved");
       await loadGoals();
       } catch {
-        if (goalOverlay.classList.contains("hidden")) document.getElementById("goal-feedback").textContent = "Goal saved. Refresh to reload your savings.";
-        else showMessage("Could not save. Check your connection and try again.", false);
+        if (goalOverlay.classList.contains("hidden")) document.getElementById("goal-feedback").textContent = t("goal_saved_refresh");
+        else showMessage(t("could_not_save_goal"), false);
       } finally { button.disabled = false; }
     });
 
-    loadGoals().catch(() => {
-      document.getElementById("savings-total").textContent = "Unavailable";
-      empty.textContent = "Could not load savings. Please refresh to try again.";
+    loadPreferredLanguage().then(loadGoals).catch(() => {
+      document.getElementById("savings-total").textContent = t("unavailable");
+      empty.textContent = t("could_not_load_savings");
       empty.classList.remove("hidden");
     });
   </script>

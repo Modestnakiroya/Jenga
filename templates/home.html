@@ -462,7 +462,7 @@
         </div>
         <div class="dashboard-preferences">
         <div class="frequency-control">
-          <label for="dash-frequency">Tracking period</label>
+          <label for="dash-frequency" data-i18n="tracking_period">Tracking period</label>
           <select id="dash-frequency" aria-describedby="frequency-status">
             {% for value, label in tracking_frequencies %}
               <option value="{{ value }}">{{ label }}</option>
@@ -471,7 +471,7 @@
           <p id="frequency-status" class="frequency-status" role="status" aria-live="polite"></p>
         </div>
         <div class="frequency-control">
-          <label for="dash-language">Language</label>
+          <label for="dash-language" data-i18n="language">Language</label>
           <select id="dash-language" aria-describedby="dash-language-error">
             {% for value, label in languages %}
               <option value="{{ value }}">{{ label }}</option>
@@ -675,19 +675,10 @@
     {% endfor %}
   </select>
 
+  {% include "partials/i18n.html" %}
   <script>
-    const DASHBOARD_LABELS = {{ dashboard_labels_json|safe }};
-    let currentLanguage = "english";
-
-    function t(key) {
-      const pack = DASHBOARD_LABELS[currentLanguage] || DASHBOARD_LABELS.english || {};
-      return pack[key] || (DASHBOARD_LABELS.english || {})[key] || key;
-    }
-
     function applyDashboardLabels() {
-      document.querySelectorAll("[data-i18n]").forEach((el) => {
-        el.textContent = t(el.getAttribute("data-i18n"));
-      });
+      applyLabels();
       const askInput = document.getElementById("ask-input");
       if (askInput) askInput.placeholder = t("ask_placeholder");
       const overlay = document.getElementById("record-overlay");
@@ -1140,7 +1131,7 @@
       document.getElementById("public-nav").classList.add("hidden");
       document.getElementById("landing-content").classList.add("hidden");
       document.getElementById("auth-area").classList.add("hidden");
-      currentLanguage = profile.preferred_language || "english";
+      rememberLanguage(profile.preferred_language || "english");
       applyDashboardLabels();
       syncLanguageControl();
       document.getElementById("auth-intro").classList.add("hidden");

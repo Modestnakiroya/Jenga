@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>Jenga — Partners</title>
+  <title data-i18n-title="page_title_partners">Jenga — Partners</title>
   <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700&display=swap" rel="stylesheet">
   {% include "partials/design_system.html" %}
   <style>
@@ -40,54 +40,55 @@
   </style>
 </head>
 <body>
-  <a class="skip-link" href="#main-content">Skip to content</a>
+  <a class="skip-link" href="#main-content" data-i18n="skip_to_content">Skip to content</a>
   <main id="main-content" tabindex="-1">
     {% include "partials/navbar.html" %}
-    <p class="eyebrow">Your banks and SACCOs</p>
-    <div class="card-head"><h1>Partner accounts</h1><button type="button" class="primary-action" id="open-partner">Add partner account</button></div>
-    <p class="lead">See your accounts, their interest rates and the minimum amount for each deposit.</p>
-    <div id="accounts-status" class="empty" role="status" aria-live="polite">Loading your accounts...</div>
+    <p class="eyebrow" data-i18n="partners_eyebrow">Your banks and SACCOs</p>
+    <div class="card-head"><h1 data-i18n="partner_accounts">Partner accounts</h1><button type="button" class="primary-action" id="open-partner" data-i18n="add_partner_account">Add partner account</button></div>
+    <p class="lead" data-i18n="partners_lead">See your accounts, their interest rates and the minimum amount for each deposit.</p>
+    <div id="accounts-status" class="empty" role="status" aria-live="polite" data-i18n="loading_accounts">Loading your accounts...</div>
     <div id="partner-accounts" class="account-grid"></div>
-    <p class="hint">These are recorded account terms, not live bank data. Rates and deposit requirements may change; check with the institution before depositing.</p>
+    <p class="hint" data-i18n="partners_hint">These are recorded account terms, not live bank data. Rates and deposit requirements may change; check with the institution before depositing.</p>
     <div id="partner-overlay" class="overlay hidden">
       <div class="card">
-        <div class="card-head"><h2>Add partner account</h2><button type="button" class="ghost icon-close" id="partner-close" aria-label="Close add partner account form"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="m6 6 12 12M6 18 18 6"/></svg></button></div>
-        <p class="hint">Record an existing account and its terms. This does not open or link a bank account.</p>
+        <div class="card-head"><h2 data-i18n="add_partner_account">Add partner account</h2><button type="button" class="ghost icon-close" id="partner-close" data-i18n-aria="close"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="m6 6 12 12M6 18 18 6"/></svg></button></div>
+        <p class="hint" data-i18n="record_existing_account">Record an existing account and its terms. This does not open or link a bank account.</p>
         <form id="partner-form">
           <div class="partner-field">
-          <label for="institution-name">Bank or SACCO name</label><input id="institution-name" name="institution_name" maxlength="180" required>
+          <label for="institution-name" data-i18n="institution_name">Bank or SACCO name</label><input id="institution-name" name="institution_name" maxlength="180" required>
           </div>
           <div class="partner-field">
-          <label for="institution-type">Institution type</label><select id="institution-type" name="institution_type"><option value="bank">Bank</option><option value="sacco">SACCO</option></select>
+          <label for="institution-type" data-i18n="institution_type">Institution type</label><select id="institution-type" name="institution_type"><option value="bank" data-i18n="bank">Bank</option><option value="sacco" data-i18n="sacco">SACCO</option></select>
           </div>
           <div class="partner-field">
-          <label for="account-name">Account name</label><input id="account-name" name="account_name" maxlength="180" required>
+          <label for="account-name" data-i18n="account_name">Account name</label><input id="account-name" name="account_name" maxlength="180" required>
           </div>
           <div class="partner-field">
-          <label for="account-digits">Last four account digits (optional)</label><input id="account-digits" name="account_last_four" inputmode="numeric" pattern="[0-9]{4}" maxlength="4">
+          <label for="account-digits" data-i18n="last_four_digits">Last four account digits (optional)</label><input id="account-digits" name="account_last_four" inputmode="numeric" pattern="[0-9]{4}" maxlength="4">
           </div>
           <div class="partner-field">
-          <label for="account-currency">Currency</label><select id="account-currency" name="currency"><option>UGX</option><option>USD</option><option>KES</option></select>
+          <label for="account-currency" data-i18n="currency">Currency</label><select id="account-currency" name="currency"><option>UGX</option><option>USD</option><option>KES</option></select>
           </div>
           <div class="partner-field">
-          <label for="account-rate">Interest rate (%) (optional)</label><input id="account-rate" name="interest_rate" type="number" min="0" max="100" step="0.001">
+          <label for="account-rate" data-i18n="interest_rate_input">Interest rate (%) (optional)</label><input id="account-rate" name="interest_rate" type="number" min="0" max="100" step="0.001">
           </div>
           <div class="partner-field">
-          <label for="account-period">Interest period</label><select id="account-period" name="interest_period"><option value="annual">Per year</option><option value="monthly">Per month</option></select>
+          <label for="account-period" data-i18n="interest_period">Interest period</label><select id="account-period" name="interest_period"><option value="annual" data-i18n="per_year">Per year</option><option value="monthly" data-i18n="per_month">Per month</option></select>
           </div>
           <div class="partner-field">
-          <label for="account-minimum">Minimum per deposit (optional)</label><input id="account-minimum" name="minimum_deposit" type="number" min="0" step="0.01">
+          <label for="account-minimum" data-i18n="minimum_deposit_label">Minimum per deposit (optional)</label><input id="account-minimum" name="minimum_deposit" type="number" min="0" step="0.01">
           </div>
           <div class="partner-field">
-          <label for="account-terms-date">Terms updated on (optional)</label><input id="account-terms-date" name="terms_updated_on" type="date">
+          <label for="account-terms-date" data-i18n="terms_updated_on">Terms updated on (optional)</label><input id="account-terms-date" name="terms_updated_on" type="date">
           </div>
           <p id="partner-message" role="status" aria-live="polite"></p>
-          <div class="partner-form-actions"><button type="submit" class="primary-action">Save account</button></div>
+          <div class="partner-form-actions"><button type="submit" class="primary-action" data-i18n="save_account">Save account</button></div>
         </form>
       </div>
     </div>
   </main>
   {% include "partials/session_client.html" %}
+  {% include "partials/i18n.html" %}
   <script>
     document.getElementById('page-menu-toggle').addEventListener('click', event => {
       const nav = event.currentTarget.closest('nav');
@@ -109,33 +110,33 @@
     }
     async function loadAccounts() {
       accountStatus.classList.remove('hidden');
-      accountStatus.textContent = 'Loading your accounts...';
+      accountStatus.textContent = t('loading_accounts');
       try {
         const response = await sessionFetch('/api/v1/partners/accounts/');
         if (response.status === 401) {
-          accountStatus.textContent = 'Log in to view your partner accounts.';
-          const login = element('a','Go to log in'); login.href = '/?start=login'; accountStatus.append(document.createElement('br'),login); return;
+          accountStatus.textContent = t('login_to_view_accounts');
+          const login = element('a', t('go_to_login')); login.href = '/?start=login'; accountStatus.append(document.createElement('br'),login); return;
         }
         if (!response.ok) throw new Error('Accounts unavailable');
         const accounts = await response.json();
         accountList.replaceChildren();
-        if (!accounts.length) { accountStatus.textContent = 'No partner accounts have been added to your profile yet.'; return; }
+        if (!accounts.length) { accountStatus.textContent = t('no_partner_accounts'); return; }
         accountStatus.classList.add('hidden');
         accounts.forEach(account => {
           const card = element('article','','card');
-          card.append(element('p',account.institution_type === 'sacco' ? 'SACCO' : 'Bank','eyebrow'));
+          card.append(element('p',account.institution_type === 'sacco' ? t('sacco') : t('bank'),'eyebrow'));
           card.append(element('h2',account.institution_name));
-          card.append(element('p',account.account_name + (account.account_last_four ? ' · Ending ' + account.account_last_four : '')));
+          card.append(element('p',account.account_name + (account.account_last_four ? ' · ' + t('ending') + ' ' + account.account_last_four : '')));
           const terms = element('dl','','account-terms');
-          const rate = account.interest_rate === null ? 'Not provided' : Number(account.interest_rate).toLocaleString() + '% ' + (account.interest_period === 'monthly' ? 'per month' : 'per year');
-          const minimum = account.minimum_deposit === null ? 'Not provided' : account.currency + ' ' + Number(account.minimum_deposit).toLocaleString('en-UG',{minimumFractionDigits:2,maximumFractionDigits:2});
-          terms.append(term('Interest rate',rate),term('Minimum per deposit',minimum)); card.append(terms);
-          card.append(element('p',account.terms_updated_on ? 'Terms updated: ' + account.terms_updated_on : 'Terms update date not provided','account-updated'));
+          const rate = account.interest_rate === null ? t('not_provided') : Number(account.interest_rate).toLocaleString() + '% ' + (account.interest_period === 'monthly' ? t('per_month_short') : t('per_year_short'));
+          const minimum = account.minimum_deposit === null ? t('not_provided') : account.currency + ' ' + Number(account.minimum_deposit).toLocaleString('en-UG',{minimumFractionDigits:2,maximumFractionDigits:2});
+          terms.append(term(t('interest_rate_term'),rate),term(t('minimum_per_deposit'),minimum)); card.append(terms);
+          card.append(element('p',account.terms_updated_on ? t('terms_updated', {date: account.terms_updated_on}) : t('terms_date_missing'),'account-updated'));
           accountList.append(card);
         });
       } catch {
-        accountStatus.textContent = 'Could not load your accounts. ';
-        const retry = element('button','Try again','ghost'); retry.type = 'button'; retry.addEventListener('click',loadAccounts); accountStatus.append(retry);
+        accountStatus.textContent = t('could_not_load_accounts') + ' ';
+        const retry = element('button', t('try_again'),'ghost'); retry.type = 'button'; retry.addEventListener('click',loadAccounts); accountStatus.append(retry);
       }
     }
     const partnerOverlay = document.getElementById('partner-overlay');
@@ -153,19 +154,19 @@
       if (button.disabled) return;
       const payload = Object.fromEntries(new FormData(partnerForm));
       for (const key of ['interest_rate','minimum_deposit','terms_updated_on']) if (!payload[key]) payload[key] = null;
-      button.disabled = true; partnerMessage.textContent = 'Saving...';
+      button.disabled = true; partnerMessage.textContent = t('saving');
       try {
         const response = await sessionFetch('/api/v1/partners/accounts/', {method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(payload)});
         const data = await response.json().catch(() => ({}));
         if (!response.ok) {
-          partnerMessage.textContent = response.status === 401 ? 'Please log in before adding an account.' : Object.entries(data).map(([key,value]) => key + ': ' + (Array.isArray(value) ? value.join(' ') : value)).join(' ') || 'Could not save. Please try again.';
+          partnerMessage.textContent = response.status === 401 ? t('login_before_adding') : Object.entries(data).map(([key,value]) => key + ': ' + (Array.isArray(value) ? value.join(' ') : value)).join(' ') || t('could_not_save');
           return;
         }
         partnerForm.reset(); closePartner(); await loadAccounts();
-      } catch { partnerMessage.textContent = 'Could not connect. Please try again.'; }
+      } catch { partnerMessage.textContent = t('could_not_connect'); }
       finally { button.disabled = false; }
     });
-    loadAccounts();
+    loadPreferredLanguage().then(loadAccounts);
   </script>
   {% include "partials/ui_behaviors.html" %}
 </body>
