@@ -174,3 +174,20 @@ class RegisterSerializer(serializers.Serializer):
 
     def to_representation(self, instance):
         return ProfileSerializer(instance).data
+
+
+class PartnerAccountSerializer(serializers.ModelSerializer):
+    class Meta:
+        from apps.accounts.models import PartnerAccount
+        model = PartnerAccount
+        fields = ("id", "institution_name", "institution_type", "account_name", "account_last_four", "currency", "interest_rate", "interest_period", "minimum_deposit", "terms_updated_on")
+        read_only_fields = ("id",)
+
+    def validate(self, attrs):
+        from apps.accounts.models import PartnerAccount
+        account = PartnerAccount(**attrs)
+        try:
+            account.clean()
+        except DjangoValidationError as exc:
+            raise serializers.ValidationError(exc.message_dict) from exc
+        return attrs

@@ -3,30 +3,15 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>Jenga — Savings goals</title>
+  <title data-i18n-title="page_title_goals">Jenga — Savings goals</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700;800&display=swap" rel="stylesheet">
   <style>
-    :root {
-      --bg: #f4efe6;
-      --card: #fffdf8;
-      --ink: #1f1a14;
-      --muted: #6b6258;
-      --line: #e4d8c8;
-      --accent: #c45c26;
-      --accent-dark: #9a4318;
-      --ok: #1f7a4d;
-      --err: #b42318;
-    }
-    * { box-sizing: border-box; }
-    body {
-      margin: 0;
-      font-family: "Segoe UI", system-ui, sans-serif;
-      background: var(--bg);
-      color: var(--ink);
-    }
     main {
-      max-width: 440px;
-      margin: 2.5rem auto;
-      padding: 0 1rem 3rem;
+      max-width: 760px;
+      margin: 0 auto;
+      padding: 0 1.25rem 3rem;
     }
     h1 { margin: 0 0 0.35rem; font-size: 1.75rem; }
     .lead { color: var(--muted); margin: 0 0 1.25rem; }
@@ -34,19 +19,10 @@
     .card {
       background: var(--card);
       border: 1px solid var(--line);
-      border-radius: 16px;
+      border-radius: 14px;
       padding: 1.25rem;
-      box-shadow: 0 10px 30px rgba(31, 26, 20, 0.06);
+      box-shadow: 0 18px 45px rgba(21, 66, 122, 0.09);
       margin-bottom: 0.85rem;
-    }
-    label { display: block; font-size: 0.85rem; font-weight: 600; margin: 0.85rem 0 0.35rem; }
-    input, select {
-      width: 100%;
-      padding: 0.7rem 0.75rem;
-      border: 1px solid var(--line);
-      border-radius: 10px;
-      font: inherit;
-      background: white;
     }
     button[type="submit"] {
       width: 100%;
@@ -68,7 +44,7 @@
     .meta { margin: 0 0 0.65rem; color: var(--muted); font-size: 0.8rem; }
     .bar {
       height: 10px;
-      background: #efe6d8;
+      background: var(--line);
       border-radius: 999px;
       overflow: hidden;
     }
@@ -80,50 +56,78 @@
       color: var(--muted);
       font-size: 0.8rem;
     }
+    h1, h2, h3 { font-weight: 600; }
+    .goal-name { font-weight: 500; }
+    @media (max-width: 560px) {
+.goal-meta { gap: 0.5rem; flex-wrap: wrap; }
+}
   </style>
+  {% include "partials/design_system.html" %}
 </head>
-<body>
-  <main>
-    <p><a href="/">← Back to dashboard</a></p>
-    <h1>Savings goals</h1>
-    <p class="lead">Track what you are saving toward.</p>
+<body class="page-goals">
+  <a class="skip-link" href="#main-content" data-i18n="skip_to_content">Skip to content</a>
+  <main id="main-content" tabindex="-1">
+    {% include "partials/navbar.html" %}
+    <h1 data-i18n="savings_goals">Savings goals</h1>
+    <p class="lead" data-i18n="savings_goals_lead">Track what you are saving toward.</p>
 
+    <div class="card savings-overview">
+      <div><p class="metric" data-i18n="current_savings_across">Current savings across your goals</p><p class="amount large" id="savings-total">Loading...</p><p class="hint" id="savings-count"></p></div>
+      <button type="button" class="primary-action" id="open-goal" data-i18n="add_a_goal">Add a goal</button>
+    </div>
+    <p id="goal-feedback" role="status" aria-live="polite"></p>
+    <section aria-label="Your savings goals">
+      <div id="goals-list"></div>
+      <p id="goals-empty" class="empty hidden" data-i18n="first_milestone">Your next milestone starts here. Add your first savings goal.</p>
+    </section>
+    <div class="overlay hidden" id="goal-overlay">
     <div class="card">
-      <h2 style="margin-top:0;font-size:1rem;">Add a goal</h2>
+      <div class="card-head"><h2 id="goal-dialog-title" data-i18n="add_a_goal">Add a goal</h2><button type="button" class="ghost icon-close" id="goal-close" aria-label="Close add goal form" data-i18n-aria="close"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="m6 6 12 12M6 18 18 6"/></svg></button></div>
       <form id="goal-form">
-        <label for="goal-name">Name</label>
+        <label for="goal-name" data-i18n="goal_name">Name</label>
         <input id="goal-name" required>
 
-        <label for="goal-type">Type</label>
+        <label for="goal-type" data-i18n="goal_type_label">Type</label>
         <select id="goal-type" required>
           {% for value, label in goal_types %}
             <option value="{{ value }}">{{ label }}</option>
           {% endfor %}
         </select>
 
-        <label for="goal-target">Target amount (UGX)</label>
+        <label for="goal-target" data-i18n="target_amount">Target amount (UGX)</label>
         <input id="goal-target" type="number" min="0.01" step="0.01" required>
 
-        <label for="goal-saved">Already saved (UGX)</label>
+        <label for="goal-saved" data-i18n="already_saved">Already saved (UGX)</label>
         <input id="goal-saved" type="number" min="0" step="0.01" value="0">
 
-        <label for="goal-date">Target date (optional)</label>
+        <label for="goal-date" data-i18n="target_date_optional">Target date (optional)</label>
         <input id="goal-date" type="date">
 
-        <button type="submit">Save goal</button>
+        <button type="submit" data-i18n="save_goal">Save goal</button>
       </form>
-      <div id="message" class="msg"></div>
+      <div id="message" class="msg" role="status" aria-live="polite"></div>
     </div>
 
-    <div id="goals-list"></div>
-    <p id="goals-empty" class="empty hidden">No goals yet, add one.</p>
+    </div>
   </main>
 
+  {% include "partials/session_client.html" %}
+  {% include "partials/i18n.html" %}
   <script>
-    const token = sessionStorage.getItem("jengaAccessToken");
     const list = document.getElementById("goals-list");
     const empty = document.getElementById("goals-empty");
     const message = document.getElementById("message");
+
+    document.getElementById("logout-button").addEventListener("click", () => {
+      sessionStorage.removeItem("jengaAccessToken");
+      sessionStorage.removeItem("jengaRefreshToken");
+      window.location.href = "/";
+    });
+    document.getElementById("page-menu-toggle").addEventListener("click", (event) => {
+      const nav = event.currentTarget.closest(".page-nav");
+      const expanded = nav.classList.toggle("menu-open");
+      event.currentTarget.setAttribute("aria-expanded", String(expanded));
+    });
 
     function formatAmount(value) {
       return "UGX " + Number(value).toLocaleString("en-UG", { maximumFractionDigits: 0 });
@@ -135,7 +139,7 @@
     }
 
     function fieldErrors(data) {
-      if (!data || typeof data !== "object") return "Something went wrong.";
+      if (!data || typeof data !== "object") return t("something_wrong");
       if (data.detail) return typeof data.detail === "string" ? data.detail : JSON.stringify(data.detail);
       return Object.entries(data).map(([key, value]) => {
         const text = Array.isArray(value) ? value.join(" ") : value;
@@ -143,9 +147,20 @@
       }).join("\n");
     }
 
+    const goalOverlay = document.getElementById("goal-overlay");
+    function closeGoal() { goalOverlay.classList.add("hidden"); document.body.classList.remove("modal-open"); }
+    document.getElementById("open-goal").addEventListener("click", () => {
+      message.className = "msg";
+      goalOverlay.classList.remove("hidden"); document.body.classList.add("modal-open");
+    });
+    document.getElementById("goal-close").addEventListener("click", closeGoal);
+    goalOverlay.addEventListener("click", event => { if (event.target === goalOverlay) closeGoal(); });
     function renderGoals(goals) {
+      document.getElementById("savings-total").textContent = formatAmount(goals.reduce((total, goal) => total + Number(goal.current_saved_amount), 0));
+      document.getElementById("savings-count").textContent = t("savings_goals_count", { count: goals.length });
       list.replaceChildren();
       empty.classList.toggle("hidden", goals.length > 0);
+      if (!goals.length) empty.textContent = t("no_goals_yet");
       goals.forEach((goal) => {
         const card = document.createElement("div");
         card.className = "card";
@@ -154,7 +169,7 @@
         title.textContent = goal.name;
         const meta = document.createElement("p");
         meta.className = "meta";
-        meta.textContent = goal.goal_type.replaceAll("_", " ") + " · " + goal.status;
+        meta.textContent = t("goal_type_" + goal.goal_type) + " · " + t("status_" + goal.status);
         const bar = document.createElement("div");
         bar.className = "bar";
         const fill = document.createElement("span");
@@ -163,7 +178,7 @@
         const amounts = document.createElement("div");
         amounts.className = "goal-meta";
         const saved = document.createElement("span");
-        saved.textContent = formatAmount(goal.current_saved_amount) + " of " + formatAmount(goal.target_amount);
+        saved.textContent = formatAmount(goal.current_saved_amount) + " " + t("of") + " " + formatAmount(goal.target_amount);
         const pct = document.createElement("span");
         pct.textContent = Math.round(Number(goal.progress_percentage)) + "%";
         amounts.append(saved, pct);
@@ -173,26 +188,27 @@
     }
 
     async function loadGoals() {
-      if (!token) {
-        empty.textContent = "Log in from the home page to see your goals.";
+      if (!sessionStorage.getItem("jengaAccessToken") && !sessionStorage.getItem("jengaRefreshToken")) {
+        document.getElementById("savings-total").textContent = t("login_to_view");
+        empty.textContent = t("login_to_see_goals");
         empty.classList.remove("hidden");
         return;
       }
-      const response = await fetch("/api/v1/goals/", {
-        headers: { Authorization: "Bearer " + token },
-      });
+      const response = await sessionFetch("/api/v1/goals/");
+      const data = await response.json().catch(() => []);
       if (!response.ok) {
-        empty.textContent = "Could not load goals. Log in again from the home page.";
+        document.getElementById("savings-total").textContent = t("unavailable");
+        empty.textContent = t("could_not_load_goals");
         empty.classList.remove("hidden");
         return;
       }
-      renderGoals(await response.json());
+      renderGoals(Array.isArray(data) ? data : []);
     }
 
     document.getElementById("goal-form").addEventListener("submit", async (event) => {
       event.preventDefault();
-      if (!token) {
-        showMessage("Log in from the home page first.", false);
+      if (!sessionStorage.getItem("jengaAccessToken") && !sessionStorage.getItem("jengaRefreshToken")) {
+        showMessage(t("login_first"), false);
         return;
       }
       const payload = {
@@ -203,12 +219,13 @@
       };
       const targetDate = document.getElementById("goal-date").value;
       if (targetDate) payload.target_date = targetDate;
-      const response = await fetch("/api/v1/goals/", {
+      const button = event.target.querySelector('button[type="submit"]');
+      if (button.disabled) return;
+      button.disabled = true;
+      try {
+      const response = await sessionFetch("/api/v1/goals/", {
         method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: "Bearer " + token,
-        },
+        headers: { "Content-Type": "application/json" },
         body: JSON.stringify(payload),
       });
       const data = await response.json().catch(() => ({}));
@@ -217,11 +234,22 @@
         return;
       }
       document.getElementById("goal-form").reset();
-      showMessage("Goal saved.", true);
+      applyLabels();
+      closeGoal();
+      document.getElementById("goal-feedback").textContent = t("goal_saved");
       await loadGoals();
+      } catch {
+        if (goalOverlay.classList.contains("hidden")) document.getElementById("goal-feedback").textContent = t("goal_saved_refresh");
+        else showMessage(t("could_not_save_goal"), false);
+      } finally { button.disabled = false; }
     });
 
-    loadGoals();
+    loadPreferredLanguage().then(loadGoals).catch(() => {
+      document.getElementById("savings-total").textContent = t("unavailable");
+      empty.textContent = t("could_not_load_savings");
+      empty.classList.remove("hidden");
+    });
   </script>
+  {% include "partials/ui_behaviors.html" %}
 </body>
 </html>

@@ -1,14 +1,19 @@
 from django.contrib import admin
 from django.urls import include, path
 
-from apps.commitments.views import CommitmentsPageView
 from apps.goals.views import GoalsPageView
-from config.views import HomeView
+from config.views import HomeView, ProfilePageView, PartnershipsView, AssistantPageView, PartnersView
+from django.views.generic import RedirectView
 
 urlpatterns = [
     path("", HomeView.as_view(), name="home"),
+    path("how-it-works/", RedirectView.as_view(url="/#how-it-works", permanent=False), name="how-it-works"),
+    path("profile/", ProfilePageView.as_view(), name="profile-page"),
     path("goals/", GoalsPageView.as_view(), name="goals-page"),
-    path("commitments/", CommitmentsPageView.as_view(), name="commitments-page"),
+    path("partners/", PartnersView.as_view(), name="partners"),
+    path("partnerships/", PartnershipsView.as_view(), name="partnerships"),
+    path("signup/", HomeView.as_view(), name="signup"),
+    path("assistant/", AssistantPageView.as_view(), name="assistant-page"),
     path("admin/", admin.site.urls),
     path("api/v1/", include("api.v1.urls")),
 ]

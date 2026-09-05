@@ -42,3 +42,16 @@ class ProfileView(generics.RetrieveUpdateAPIView):
 
     def get_object(self):
         return self.request.user
+
+
+class PartnerAccountsView(generics.ListCreateAPIView):
+    from apps.accounts.serializers import PartnerAccountSerializer
+    serializer_class = PartnerAccountSerializer
+    permission_classes = [permissions.IsAuthenticated]
+    pagination_class = None
+
+    def get_queryset(self):
+        return self.request.user.partner_accounts.all()
+
+    def perform_create(self, serializer):
+        serializer.save(user=self.request.user)

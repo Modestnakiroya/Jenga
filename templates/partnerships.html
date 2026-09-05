@@ -1,0 +1,67 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Jenga — Partnerships</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  {% include "partials/design_system.html" %}
+  <style>
+    main { max-width: 1180px; margin: 0 auto; padding: 0 1.25rem 4rem; }
+    .partners-intro { max-width: 760px; padding: 2rem 0 2.5rem; }
+    .partners-intro h1 { font-size: clamp(2.2rem, 5vw, 3.7rem); margin: 0.7rem 0 1.2rem; }
+    .partner-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 1.5rem; }
+    .partner-card { border-top: 4px solid var(--accent); }
+    .partner-card h2 { margin: 0.5rem 0 1rem; font-size: 1.7rem; }
+    .partner-card p, .partner-card li { color: var(--muted); }
+    .partner-card ul { padding-left: 1.25rem; margin: 1.25rem 0; }
+    .partner-card li { margin-bottom: 0.6rem; }
+    .partner-card details { margin-top: 1.5rem; border-top: 1px solid var(--line); padding-top: 1rem; }
+    .partner-card summary { cursor: pointer; color: var(--accent-dark); font-weight: 500; padding: 0.4rem 0; }
+    .partner-note { display: grid; grid-template-columns: 1fr 2fr; gap: 2rem; padding: 2rem 0; margin-top: 2.5rem; border-top: 1px solid var(--line); }
+    .partner-note h2 { margin: 0; }
+    .partner-note p { margin: 0; color: var(--muted); }
+    .partner-footer { margin-top: 1.5rem; }
+    @media (max-width: 760px) {
+      .partners-intro { padding-top: 0.5rem; }
+      .partner-grid, .partner-note { grid-template-columns: 1fr; }
+      .partner-note { gap: 0.75rem; }
+    }
+  </style>
+</head>
+<body class="page-partnerships">
+  <a class="skip-link" href="#main-content">Skip to content</a>
+  <main id="main-content" tabindex="-1">
+    {% include "partials/navbar.html" with variant="visitor" %}
+    <header class="partners-intro">
+      <p class="eyebrow">Partner with Jenga</p>
+      <h1>Help small businesses<br>build a stronger future.</h1>
+      <p class="lead">We are exploring collaboration with banks and SACCOs to connect everyday financial planning with accessible savings products. Bring your institution's expertise to the businesses using Jenga.</p>
+    </header>
+    <div class="partner-grid">
+      <article class="card partner-card">
+        <p class="eyebrow">For SACCOs</p><h2>Support your members' next milestone.</h2>
+        <p>Work with Jenga to help members understand their savings options and build a consistent money-management routine.</p>
+        <ul><li>Present your savings products and membership requirements clearly.</li><li>Make interest rates and minimum contributions easier to understand.</li><li>Explore financial education for members and small businesses.</li></ul>
+      </article>
+      <article class="card partner-card">
+        <p class="eyebrow">For banks</p><h2>Meet businesses where they are.</h2>
+        <p>Explore ways to bring relevant banking products to people already tracking their income, expenses and goals.</p>
+        <ul><li>Introduce business savings products with transparent terms.</li><li>Help customers understand deposit requirements and interest rates.</li><li>Explore account integrations with customer permission.</li></ul>
+      </article>
+    </div>
+    <section class="partner-note"><h2>How we could collaborate</h2><p>Start with product information and financial education, then explore a pilot and account integration together. The scope, customer consent and data-sharing arrangements would be agreed with each institution.</p></section>
+    <section class="partner-note"><h2>Building the partnership programme</h2><p>No confirmed institutions are listed yet. These are proposed collaboration opportunities, not active bank connections. We will publish partner enquiry details when the programme opens.</p></section>
+    <p class="partner-footer"><a href="/signup/">Explore Jenga: create an account</a></p>
+  </main>
+  <script>
+    document.getElementById("page-menu-toggle").addEventListener("click", event => {
+      const nav = event.currentTarget.closest("nav");
+      event.currentTarget.setAttribute("aria-expanded", String(nav.classList.toggle("menu-open")));
+    });
+  </script>
+  {% include "partials/ui_behaviors.html" %}
+</body>
+</html>
