@@ -1,3 +1,4 @@
+from datetime import timedelta
 from pathlib import Path
 import os
 
@@ -5,7 +6,7 @@ from dotenv import load_dotenv
 
 BASE_DIR = Path(__file__).resolve().parent.parent
 
-load_dotenv(BASE_DIR / ".env")
+load_dotenv(BASE_DIR / ".env", override=True)
 
 
 def env_bool(name, default=False):
@@ -38,6 +39,9 @@ INSTALLED_APPS = [
     "apps.transactions.apps.TransactionsConfig",
     "apps.goals.apps.GoalsConfig",
     "apps.retirement.apps.RetirementConfig",
+    "apps.planning.apps.PlanningConfig",
+    "apps.commitments.apps.CommitmentsConfig",
+    "apps.assistant.apps.AssistantConfig",
 ]
 
 MIDDLEWARE = [
@@ -114,7 +118,12 @@ REST_FRAMEWORK = {
 
 SIMPLE_JWT = {
     "TOKEN_OBTAIN_SERIALIZER": "apps.accounts.serializers.PhoneTokenObtainPairSerializer",
+    "ACCESS_TOKEN_LIFETIME": timedelta(hours=12),
+    "REFRESH_TOKEN_LIFETIME": timedelta(days=7),
 }
 
 CORS_ALLOWED_ORIGINS = env_list("CORS_ALLOWED_ORIGINS")
 CORS_ALLOW_ALL_ORIGINS = env_bool("CORS_ALLOW_ALL_ORIGINS", default=False)
+
+GEMINI_API_KEY = os.getenv("GEMINI_API_KEY", "")
+GEMINI_MODEL = os.getenv("GEMINI_MODEL", "gemini-3.6-flash")

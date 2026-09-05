@@ -241,6 +241,37 @@
       cursor: pointer;
       text-decoration: underline;
     }
+    .verdict {
+      margin: 0.85rem 0 0.35rem;
+      font-weight: 800;
+      letter-spacing: 0.04em;
+      text-transform: uppercase;
+    }
+    .verdict.green { color: var(--ok); }
+    .verdict.yellow { color: #b8860b; }
+    .verdict.red { color: var(--err); }
+    .actions .wide { grid-column: 1 / -1; }
+    .split { list-style: none; margin: 0.75rem 0 0; padding: 0; }
+    .split li {
+      display: flex;
+      justify-content: space-between;
+      gap: 0.75rem;
+      padding: 0.5rem 0;
+      border-top: 1px solid var(--line);
+      font-weight: 600;
+    }
+    .split li:first-child { border-top: 0; padding-top: 0; }
+    .banner {
+      display: block;
+      margin: 0 0 1rem;
+      padding: 0.85rem 1rem;
+      border-radius: 12px;
+      background: #fff4e5;
+      border: 1px solid #e8c48a;
+      color: var(--accent-dark);
+      font-weight: 700;
+      text-decoration: none;
+    }
   </style>
 </head>
 <body>
@@ -329,6 +360,8 @@
         <span class="freq-label" id="dash-frequency"></span>
       </header>
 
+      <a id="due-commitment-banner" class="banner hidden" href="/commitments/"></a>
+
       <div class="stack">
         <section class="card">
           <div class="card-head">
@@ -351,29 +384,39 @@
           </div>
         </section>
 
-        {# PLACEHOLDER: safe to spend — wire to planning later #}
-        <section class="card" data-placeholder="safe-to-spend">
+        <section class="card">
           <div class="card-head">
             <h2>Safe to spend</h2>
-            <span class="sample">Sample data</span>
           </div>
           <p class="metric">Safely available</p>
-          <p class="amount large">UGX 145,000</p>
-          <p class="hint">Based on your upcoming expenses and reserve.</p>
+          <p class="amount large" id="safe-to-spend-amount">UGX 0</p>
+          <p class="hint">Cash on hand minus upcoming expenses and a 15% emergency reserve.</p>
         </section>
 
-        {# PLACEHOLDER: quick actions — no backend yet #}
-        <section class="card" data-placeholder="quick-actions">
+        <section class="card">
           <div class="card-head">
             <h2>Quick actions</h2>
-            <span class="sample">Coming soon</span>
           </div>
           <div class="actions">
             <button type="button" data-record="income">Record income</button>
             <button type="button" data-record="expense">Record expense</button>
-            <button type="button" data-coming-soon>Can I afford this?</button>
+            <button type="button" id="open-afford">Can I afford this?</button>
             <a href="/goals/">View savings goals</a>
+            <button type="button" class="wide" id="open-allocate">What should I do with this?</button>
           </div>
+        </section>
+
+        <section class="card">
+          <div class="card-head">
+            <h2>Ask Jenga</h2>
+          </div>
+          <form id="ask-form">
+            <label for="ask-input">What do you want to know?</label>
+            <input id="ask-input" required placeholder="e.g. Can I afford 20000?">
+            <button type="submit">Ask</button>
+          </form>
+          <p id="ask-reply" class="hint hidden"></p>
+          <div id="ask-status" class="msg"></div>
         </section>
 
         <section class="card">
@@ -440,6 +483,45 @@
         </div>
       </div>
 
+      <div class="overlay hidden" id="afford-overlay">
+        <div class="card">
+          <div class="card-head">
+            <h2>Can I afford this?</h2>
+            <button type="button" class="ghost" id="afford-close" style="width:auto;padding:0.4rem 0.7rem;border-radius:8px;font-weight:700;">Close</button>
+          </div>
+          <form id="afford-form">
+            <label for="afford-amount">Amount (UGX)</label>
+            <input id="afford-amount" name="amount" type="number" min="0.01" step="0.01" required>
+            <div class="form-actions">
+              <button type="submit">Check</button>
+            </div>
+          </form>
+          <p id="afford-verdict" class="verdict hidden"></p>
+          <p id="afford-explanation" class="hint hidden"></p>
+          <div id="afford-message" class="msg"></div>
+        </div>
+      </div>
+
+      <div class="overlay hidden" id="allocate-overlay">
+        <div class="card">
+          <div class="card-head">
+            <h2>What should I do with this?</h2>
+            <button type="button" class="ghost" id="allocate-close" style="width:auto;padding:0.4rem 0.7rem;border-radius:8px;font-weight:700;">Close</button>
+          </div>
+          <form id="allocate-form">
+            <label for="allocate-amount">Income amount (UGX)</label>
+            <input id="allocate-amount" name="amount" type="number" min="0.01" step="0.01" required>
+            <div class="form-actions">
+              <button type="submit">Suggest a split</button>
+            </div>
+          </form>
+          <p id="allocate-class" class="verdict hidden"></p>
+          <p id="allocate-explanation" class="hint hidden"></p>
+          <ul class="split hidden" id="allocate-split"></ul>
+          <div id="allocate-message" class="msg"></div>
+        </div>
+      </div>
+
       <div class="overlay hidden" id="record-overlay">
         <div class="card">
           <div class="card-head">
@@ -495,7 +577,52 @@
     const retirementForm = document.getElementById("retirement-form");
     const retirementOverlay = document.getElementById("retirement-overlay");
     const retirementMessage = document.getElementById("retirement-message");
+    const affordForm = document.getElementById("afford-form");
+    const affordOverlay = document.getElementById("afford-overlay");
+    const affordMessage = document.getElementById("afford-message");
+    const allocateForm = document.getElementById("allocate-form");
+    const allocateOverlay = document.getElementById("allocate-overlay");
+    const allocateMessage = document.getElementById("allocate-message");
     let accessToken = sessionStorage.getItem("jengaAccessToken") || "";
+    let refreshToken = sessionStorage.getItem("jengaRefreshToken") || "";
+
+    function saveTokens(access, refresh) {
+      accessToken = access || "";
+      sessionStorage.setItem("jengaAccessToken", accessToken);
+      if (refresh) {
+        refreshToken = refresh;
+        sessionStorage.setItem("jengaRefreshToken", refreshToken);
+      }
+    }
+
+    function clearSession() {
+      accessToken = "";
+      refreshToken = "";
+      sessionStorage.removeItem("jengaAccessToken");
+      sessionStorage.removeItem("jengaRefreshToken");
+    }
+
+    async function refreshAccessToken() {
+      if (!refreshToken) return false;
+      const { response, data } = await postJson("/api/v1/auth/refresh/", { refresh: refreshToken });
+      if (!response.ok || !data.access) return false;
+      saveTokens(data.access, data.refresh || refreshToken);
+      return true;
+    }
+
+    async function apiFetch(url, options) {
+      const headers = Object.assign(
+        { Authorization: "Bearer " + accessToken },
+        (options && options.headers) || {}
+      );
+      let response = await fetch(url, Object.assign({}, options || {}, { headers: headers }));
+      if (response.status === 401 && (await refreshAccessToken())) {
+        headers.Authorization = "Bearer " + accessToken;
+        response = await fetch(url, Object.assign({}, options || {}, { headers: headers }));
+      }
+      const data = await response.json().catch(() => ({}));
+      return { response: response, data: data };
+    }
 
     function showMessage(text, ok) {
       message.textContent = text;
@@ -504,7 +631,11 @@
 
     function fieldErrors(data) {
       if (!data || typeof data !== "object") return "Something went wrong.";
-      if (data.detail) return typeof data.detail === "string" ? data.detail : JSON.stringify(data.detail);
+      if (data.detail) {
+        const detail = typeof data.detail === "string" ? data.detail : JSON.stringify(data.detail);
+        if (/token/i.test(detail)) return "Your session expired. Please log in again.";
+        return detail;
+      }
       return Object.entries(data).map(([key, value]) => {
         const text = Array.isArray(value) ? value.join(" ") : value;
         return key + ": " + text;
@@ -545,10 +676,7 @@
     }
 
     async function loadGoalPreview() {
-      const response = await fetch("/api/v1/goals/", {
-        headers: { Authorization: "Bearer " + accessToken },
-      });
-      const goals = await response.json();
+      const { data: goals } = await apiFetch("/api/v1/goals/");
       const preview = document.getElementById("dash-goal-preview");
       const empty = document.getElementById("dash-goal-empty");
       const active = Array.isArray(goals) ? goals.filter((goal) => goal.status === "active") : [];
@@ -571,16 +699,13 @@
     async function loadRetirementPreview() {
       const setup = document.getElementById("dash-retirement-setup");
       const status = document.getElementById("dash-retirement-status");
-      const response = await fetch("/api/v1/retirement/projection/", {
-        headers: { Authorization: "Bearer " + accessToken },
-      });
+      const { response, data } = await apiFetch("/api/v1/retirement/projection/");
       if (response.status === 404) {
         status.classList.add("hidden");
         setup.classList.remove("hidden");
         return;
       }
       if (!response.ok) return;
-      const data = await response.json();
       setup.classList.add("hidden");
       status.classList.remove("hidden");
       document.getElementById("dash-retirement-label").textContent =
@@ -596,11 +721,8 @@
       retirementForm.reset();
       retirementMessage.className = "msg";
       document.getElementById("retirement-form-title").textContent = "Set up your retirement plan";
-      const response = await fetch("/api/v1/retirement/profile/", {
-        headers: { Authorization: "Bearer " + accessToken },
-      });
+      const { response, data: profile } = await apiFetch("/api/v1/retirement/profile/");
       if (response.ok) {
-        const profile = await response.json();
         document.getElementById("retirement-form-title").textContent = "Update retirement plan";
         document.getElementById("retirement-current-age").value = profile.current_age;
         document.getElementById("retirement-desired-age").value = profile.desired_retirement_age;
@@ -613,11 +735,134 @@
       document.body.classList.add("modal-open");
     }
 
-    async function loadFinancialSummary() {
-      const response = await fetch("/api/v1/summary/", {
-        headers: { Authorization: "Bearer " + accessToken },
+    function todayLocal() {
+      const now = new Date();
+      const month = String(now.getMonth() + 1).padStart(2, "0");
+      const day = String(now.getDate()).padStart(2, "0");
+      return now.getFullYear() + "-" + month + "-" + day;
+    }
+
+    async function loadDueCommitmentBanner() {
+      const banner = document.getElementById("due-commitment-banner");
+      const { response, data: items } = await apiFetch("/api/v1/commitments/?status=pending");
+      if (!response.ok) {
+        banner.classList.add("hidden");
+        return;
+      }
+      const today = todayLocal();
+      const due = (Array.isArray(items) ? items : []).filter((item) => item.period_end < today);
+      if (!due.length) {
+        banner.classList.add("hidden");
+        return;
+      }
+      banner.textContent = due.length === 1
+        ? "You have 1 saving check-in due"
+        : "You have " + due.length + " saving check-ins due";
+      banner.classList.remove("hidden");
+    }
+
+    async function loadSafeToSpend() {
+      const { response, data } = await apiFetch("/api/v1/planning/available-money/");
+      if (!response.ok) return;
+      document.getElementById("safe-to-spend-amount").textContent =
+        formatAmount(data.safely_available_amount);
+    }
+
+    function closeAffordForm() {
+      affordOverlay.classList.add("hidden");
+      document.body.classList.remove("modal-open");
+    }
+
+    function closeAllocateForm() {
+      allocateOverlay.classList.add("hidden");
+      document.body.classList.remove("modal-open");
+    }
+
+    function resetAllocateDisplay() {
+      allocateMessage.className = "msg";
+      document.getElementById("allocate-class").className = "verdict hidden";
+      document.getElementById("allocate-explanation").className = "hint hidden";
+      const split = document.getElementById("allocate-split");
+      split.classList.add("hidden");
+      split.replaceChildren();
+    }
+
+    function renderAllocation(data) {
+      const labels = {
+        reinvestment: "Reinvestment",
+        personal: "Personal",
+        emergency: "Emergency",
+        goals: "Goals",
+      };
+      const tone = {
+        Good: "green",
+        Average: "yellow",
+        Bad: "red",
+      };
+      const verdict = document.getElementById("allocate-class");
+      const explanation = document.getElementById("allocate-explanation");
+      const split = document.getElementById("allocate-split");
+      verdict.textContent = data.classification + " month";
+      verdict.className = "verdict " + (tone[data.classification] || "");
+      explanation.textContent = data.explanation;
+      explanation.classList.remove("hidden");
+      split.replaceChildren();
+      Object.entries(data.allocation || {}).forEach(([key, value]) => {
+        const item = document.createElement("li");
+        const name = document.createElement("span");
+        name.textContent = labels[key] || key;
+        const amount = document.createElement("span");
+        amount.textContent = formatAmount(value);
+        item.append(name, amount);
+        split.append(item);
       });
-      const data = await response.json();
+      split.classList.remove("hidden");
+    }
+
+    async function fetchAllocation(amount) {
+      return apiFetch("/api/v1/planning/allocate/", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ amount: amount }),
+      });
+    }
+
+    function openAllocateForm(prefillAmount) {
+      allocateForm.reset();
+      allocateForm.classList.remove("hidden");
+      resetAllocateDisplay();
+      if (prefillAmount) {
+        document.getElementById("allocate-amount").value = prefillAmount;
+      }
+      allocateOverlay.classList.remove("hidden");
+      document.body.classList.add("modal-open");
+    }
+
+    async function showAllocationFor(amount) {
+      allocateForm.classList.add("hidden");
+      resetAllocateDisplay();
+      allocateOverlay.classList.remove("hidden");
+      document.body.classList.add("modal-open");
+      const { response, data } = await fetchAllocation(amount);
+      if (!response.ok) {
+        allocateMessage.textContent = fieldErrors(data);
+        allocateMessage.className = "msg show err";
+        return;
+      }
+      renderAllocation(data);
+    }
+
+    function openAffordForm() {
+      affordForm.reset();
+      affordMessage.className = "msg";
+      document.getElementById("afford-verdict").className = "verdict hidden";
+      document.getElementById("afford-explanation").className = "hint hidden";
+      affordOverlay.classList.remove("hidden");
+      document.body.classList.add("modal-open");
+    }
+
+    async function loadFinancialSummary() {
+      const { response, data } = await apiFetch("/api/v1/summary/");
       if (!response.ok) return;
       document.getElementById("summary-income").textContent = formatAmount(data.total_income);
       document.getElementById("summary-expenses").textContent = formatAmount(data.total_expenses);
@@ -626,10 +871,7 @@
     }
 
     async function loadRecentActivity() {
-      const response = await fetch("/api/v1/transactions/", {
-        headers: { Authorization: "Bearer " + accessToken },
-      });
-      const items = await response.json();
+      const { data: items } = await apiFetch("/api/v1/transactions/");
       const list = document.getElementById("recent-activity");
       const empty = document.getElementById("activity-empty");
       list.replaceChildren();
@@ -707,8 +949,10 @@
       );
       loadRecentActivity();
       loadFinancialSummary();
+      loadSafeToSpend();
       loadGoalPreview();
       loadRetirementPreview();
+      loadDueCommitmentBanner();
     }
 
     tabs.forEach((tab) => {
@@ -772,12 +1016,12 @@
         showMessage(fieldErrors(data), false);
         return;
       }
-      const profileRes = await fetch("/api/v1/profile/", {
-        headers: { Authorization: "Bearer " + data.access },
-      });
-      const profile = await profileRes.json();
-      accessToken = data.access;
-      sessionStorage.setItem("jengaAccessToken", accessToken);
+      saveTokens(data.access, data.refresh);
+      const { response: profileRes, data: profile } = await apiFetch("/api/v1/profile/");
+      if (!profileRes.ok) {
+        showMessage(fieldErrors(profile), false);
+        return;
+      }
       showDashboard(profile);
     });
 
@@ -814,12 +1058,9 @@
       event.preventDefault();
       const button = retirementForm.querySelector("button[type=submit]");
       button.disabled = true;
-      const { response, data } = await fetch("/api/v1/retirement/profile/", {
+      const { response, data } = await apiFetch("/api/v1/retirement/profile/", {
         method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: "Bearer " + accessToken,
-        },
+        headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           current_age: Number(document.getElementById("retirement-current-age").value),
           desired_retirement_age: Number(document.getElementById("retirement-desired-age").value),
@@ -828,7 +1069,7 @@
           desired_retirement_fund: document.getElementById("retirement-fund").value,
           current_monthly_contribution: document.getElementById("retirement-contribution").value || "0",
         }),
-      }).then(async (response) => ({ response, data: await response.json().catch(() => ({})) }));
+      });
       button.disabled = false;
       if (!response.ok) {
         retirementMessage.textContent = fieldErrors(data);
@@ -854,20 +1095,19 @@
       }
       const button = recordForm.querySelector("button[type=submit]");
       button.disabled = true;
-      const { response, data } = await fetch("/api/v1/transactions/", {
+      const recordedType = document.getElementById("record-type").value;
+      const recordedAmount = document.getElementById("record-amount").value;
+      const { response, data } = await apiFetch("/api/v1/transactions/", {
         method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: "Bearer " + accessToken,
-        },
+        headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          type: document.getElementById("record-type").value,
-          amount: document.getElementById("record-amount").value,
+          type: recordedType,
+          amount: recordedAmount,
           category: document.getElementById("record-category").value,
           description: document.getElementById("record-description").value.trim(),
           date: document.getElementById("record-date").value,
         }),
-      }).then(async (response) => ({ response, data: await response.json().catch(() => ({})) }));
+      });
       button.disabled = false;
       if (!response.ok) {
         recordMessage.textContent = fieldErrors(data);
@@ -877,25 +1117,105 @@
       closeRecordForm();
       await loadRecentActivity();
       await loadFinancialSummary();
+      await loadSafeToSpend();
+      if (recordedType === "income") {
+        await showAllocationFor(recordedAmount);
+      }
     });
 
-    document.querySelectorAll("[data-coming-soon]").forEach((button) => {
-      button.addEventListener("click", () => {
-        alert("Coming soon");
+    document.getElementById("open-allocate").addEventListener("click", () => openAllocateForm());
+    document.getElementById("allocate-close").addEventListener("click", closeAllocateForm);
+    allocateOverlay.addEventListener("click", (event) => {
+      if (event.target === allocateOverlay) closeAllocateForm();
+    });
+    allocateForm.addEventListener("submit", async (event) => {
+      event.preventDefault();
+      const button = allocateForm.querySelector("button[type=submit]");
+      button.disabled = true;
+      const { response, data } = await fetchAllocation(document.getElementById("allocate-amount").value);
+      button.disabled = false;
+      if (!response.ok) {
+        allocateMessage.textContent = fieldErrors(data);
+        allocateMessage.className = "msg show err";
+        return;
+      }
+      allocateMessage.className = "msg";
+      renderAllocation(data);
+    });
+
+    document.getElementById("ask-form").addEventListener("submit", async (event) => {
+      event.preventDefault();
+      const reply = document.getElementById("ask-reply");
+      const box = document.getElementById("ask-status");
+      const button = document.querySelector("#ask-form button[type=submit]");
+      reply.classList.add("hidden");
+      box.className = "msg";
+      button.disabled = true;
+      const { response, data } = await apiFetch("/api/v1/assistant/ask/", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          message: document.getElementById("ask-input").value.trim(),
+        }),
       });
+      button.disabled = false;
+      if (!response.ok) {
+        box.textContent = fieldErrors(data);
+        box.className = "msg show err";
+        return;
+      }
+      reply.textContent = data.reply || "";
+      reply.classList.remove("hidden");
+      if (data.intent === "RECORD_TRANSACTION") {
+        await loadRecentActivity();
+        await loadFinancialSummary();
+        await loadSafeToSpend();
+      }
+      if (data.intent === "CHECK_SUMMARY") {
+        await loadFinancialSummary();
+      }
+    });
+
+    document.getElementById("open-afford").addEventListener("click", openAffordForm);
+    document.getElementById("afford-close").addEventListener("click", closeAffordForm);
+    affordOverlay.addEventListener("click", (event) => {
+      if (event.target === affordOverlay) closeAffordForm();
+    });
+    affordForm.addEventListener("submit", async (event) => {
+      event.preventDefault();
+      const button = affordForm.querySelector("button[type=submit]");
+      button.disabled = true;
+      const { response, data } = await apiFetch("/api/v1/planning/can-i-afford/", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          amount: document.getElementById("afford-amount").value,
+        }),
+      });
+      button.disabled = false;
+      if (!response.ok) {
+        affordMessage.textContent = fieldErrors(data);
+        affordMessage.className = "msg show err";
+        return;
+      }
+      affordMessage.className = "msg";
+      const verdict = document.getElementById("afford-verdict");
+      const explanation = document.getElementById("afford-explanation");
+      const tone = (data.status || "").toLowerCase();
+      verdict.textContent = data.status;
+      verdict.className = "verdict " + tone;
+      explanation.textContent = data.explanation;
+      explanation.classList.remove("hidden");
     });
 
     async function restoreSession() {
-      if (!accessToken) return;
-      const response = await fetch("/api/v1/profile/", {
-        headers: { Authorization: "Bearer " + accessToken },
-      });
+      if (!accessToken && !refreshToken) return;
+      const { response, data } = await apiFetch("/api/v1/profile/");
       if (!response.ok) {
-        accessToken = "";
-        sessionStorage.removeItem("jengaAccessToken");
+        clearSession();
         return;
       }
-      showDashboard(await response.json());
+      showDashboard(data);
     }
 
     restoreSession();

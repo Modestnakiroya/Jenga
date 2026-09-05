@@ -1,0 +1,203 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Jenga — Saving check-ins</title>
+  <style>
+    :root {
+      --bg: #f4efe6;
+      --card: #fffdf8;
+      --ink: #1f1a14;
+      --muted: #6b6258;
+      --line: #e4d8c8;
+      --accent: #c45c26;
+      --accent-dark: #9a4318;
+      --ok: #1f7a4d;
+      --err: #b42318;
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      font-family: "Segoe UI", system-ui, sans-serif;
+      background: var(--bg);
+      color: var(--ink);
+    }
+    main {
+      max-width: 440px;
+      margin: 2.5rem auto;
+      padding: 0 1rem 3rem;
+    }
+    h1 { margin: 0 0 0.35rem; font-size: 1.75rem; }
+    .lead { color: var(--muted); margin: 0 0 1.25rem; }
+    a { color: var(--accent-dark); }
+    .card {
+      background: var(--card);
+      border: 1px solid var(--line);
+      border-radius: 16px;
+      padding: 1.25rem;
+      box-shadow: 0 10px 30px rgba(31, 26, 20, 0.06);
+      margin-bottom: 0.85rem;
+    }
+    label { display: block; font-size: 0.85rem; font-weight: 600; margin: 0.85rem 0 0.35rem; }
+    input, textarea {
+      width: 100%;
+      padding: 0.7rem 0.75rem;
+      border: 1px solid var(--line);
+      border-radius: 10px;
+      font: inherit;
+      background: white;
+    }
+    button[type="submit"] {
+      width: 100%;
+      margin-top: 0.85rem;
+      padding: 0.75rem;
+      border: 0;
+      border-radius: 10px;
+      background: var(--accent);
+      color: white;
+      font-weight: 700;
+      cursor: pointer;
+    }
+    .ghost {
+      border: 1px solid var(--line);
+      background: white;
+      color: var(--ink);
+    }
+    .form-actions { display: flex; gap: 0.6rem; }
+    .form-actions button { flex: 1; }
+    .msg { margin-top: 1rem; padding: 0.75rem 0.85rem; border-radius: 10px; display: none; white-space: pre-wrap; }
+    .msg.show { display: block; }
+    .msg.ok { background: #e8f6ee; color: var(--ok); }
+    .msg.err { background: #fdecea; color: var(--err); }
+    .empty { color: var(--muted); }
+    .title { margin: 0 0 0.35rem; font-weight: 700; }
+    .meta { margin: 0 0 0.75rem; color: var(--muted); font-size: 0.85rem; }
+  </style>
+</head>
+<body>
+  <main>
+    <p><a href="/">← Back to dashboard</a></p>
+    <h1>Saving check-ins</h1>
+    <p class="lead">Confirm what you saved or adjust the target for a due commitment.</p>
+
+    <div id="due-list"></div>
+    <p id="due-empty" class="empty hidden">No saving check-ins are due.</p>
+  </main>
+
+  <script>
+    const token = sessionStorage.getItem("jengaAccessToken");
+    const list = document.getElementById("due-list");
+    const empty = document.getElementById("due-empty");
+
+    function todayLocal() {
+      const now = new Date();
+      const month = String(now.getMonth() + 1).padStart(2, "0");
+      const day = String(now.getDate()).padStart(2, "0");
+      return now.getFullYear() + "-" + month + "-" + day;
+    }
+
+    function formatAmount(value) {
+      return "UGX " + Number(value).toLocaleString("en-UG", { maximumFractionDigits: 0 });
+    }
+
+    function fieldErrors(data) {
+      if (!data || typeof data !== "object") return "Something went wrong.";
+      if (data.detail) return typeof data.detail === "string" ? data.detail : JSON.stringify(data.detail);
+      return Object.entries(data).map(([key, value]) => {
+        const text = Array.isArray(value) ? value.join(" ") : value;
+        return key + ": " + text;
+      }).join("\n");
+    }
+
+    function showCardMessage(card, text, ok) {
+      const box = card.querySelector(".msg");
+      box.textContent = text;
+      box.className = "msg show " + (ok ? "ok" : "err");
+    }
+
+    async function patchCommitment(path, body) {
+      const response = await fetch("/api/v1/commitments/" + path, {
+        method: "PATCH",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: "Bearer " + token,
+        },
+        body: JSON.stringify(body),
+      });
+      return { response, data: await response.json().catch(() => ({})) };
+    }
+
+    function renderDue(items) {
+      list.replaceChildren();
+      empty.classList.toggle("hidden", items.length > 0);
+      items.forEach((item) => {
+        const card = document.createElement("div");
+        card.className = "card";
+        card.innerHTML =
+          '<p class="title">Save ' + formatAmount(item.target_amount) + '</p>' +
+          '<p class="meta">Due ' + item.period_end + (item.goal ? " · Linked to a goal" : "") + '</p>' +
+          '<form class="confirm-form">' +
+            '<label>Amount saved (UGX)</label>' +
+            '<input name="saved_amount" type="number" min="0" step="0.01" required>' +
+            '<button type="submit">Confirm</button>' +
+          '</form>' +
+          '<form class="adjust-form">' +
+            '<label>New target (UGX)</label>' +
+            '<input name="new_target_amount" type="number" min="0.01" step="0.01" required>' +
+            '<label>Reason</label>' +
+            '<textarea name="reason" rows="2" required></textarea>' +
+            '<button type="submit" class="ghost">Adjust target</button>' +
+          '</form>' +
+          '<div class="msg"></div>';
+
+        card.querySelector(".confirm-form").addEventListener("submit", async (event) => {
+          event.preventDefault();
+          const { response, data } = await patchCommitment(item.id + "/confirm/", {
+            saved_amount: event.target.saved_amount.value,
+          });
+          if (!response.ok) {
+            showCardMessage(card, fieldErrors(data), false);
+            return;
+          }
+          await loadDue();
+        });
+        card.querySelector(".adjust-form").addEventListener("submit", async (event) => {
+          event.preventDefault();
+          const { response, data } = await patchCommitment(item.id + "/adjust/", {
+            new_target_amount: event.target.new_target_amount.value,
+            reason: event.target.reason.value.trim(),
+          });
+          if (!response.ok) {
+            showCardMessage(card, fieldErrors(data), false);
+            return;
+          }
+          await loadDue();
+        });
+        list.append(card);
+      });
+    }
+
+    async function loadDue() {
+      if (!token) {
+        empty.textContent = "Log in from the home page to see due check-ins.";
+        empty.classList.remove("hidden");
+        return;
+      }
+      const response = await fetch("/api/v1/commitments/?status=pending", {
+        headers: { Authorization: "Bearer " + token },
+      });
+      if (!response.ok) {
+        empty.textContent = "Could not load check-ins. Log in again from the home page.";
+        empty.classList.remove("hidden");
+        return;
+      }
+      const today = todayLocal();
+      const due = (await response.json()).filter((item) => item.period_end < today);
+      renderDue(due);
+    }
+
+    loadDue();
+  </script>
+</body>
+</html>
