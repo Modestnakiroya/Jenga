@@ -14,6 +14,7 @@ from apps.assistant.engine import (
     json_ready,
 )
 from apps.assistant.llm import LLMError, call_llm
+from apps.assistant.sunbird_client import localize_reply
 from apps.assistant.prompts import (
     CLASSIFY_SYSTEM,
     CLASSIFY_USER,
@@ -79,7 +80,7 @@ class AskView(APIView):
             return Response(
                 {
                     "intent": INTENT_GENERAL_QUESTION,
-                    "reply": LOW_CONFIDENCE_REPLY,
+                    "reply": localize_reply(LOW_CONFIDENCE_REPLY, request.user.preferred_language),
                     "facts": {},
                 }
             )
@@ -95,7 +96,7 @@ class AskView(APIView):
             return Response(
                 {
                     "intent": parsed["intent"],
-                    "reply": result["error"],
+                    "reply": localize_reply(result["error"], request.user.preferred_language),
                     "facts": facts,
                 }
             )
@@ -122,7 +123,7 @@ class AskView(APIView):
         return Response(
             {
                 "intent": parsed["intent"],
-                "reply": reply,
+                "reply": localize_reply(reply, request.user.preferred_language),
                 "facts": facts,
             }
         )

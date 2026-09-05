@@ -413,3 +413,52 @@ class GeminiClientTests(SimpleTestCase):
         with self.assertRaises(LLMError) as ctx:
             call_llm("system", "hello")
         self.assertIn("unexpected", str(ctx.exception).lower())
+
+
+class DashboardTranslationTests(SimpleTestCase):
+    def test_luganda_covers_modal_and_category_keys(self):
+        from apps.assistant.translations import DASHBOARD_LABELS, ENGLISH_LABELS
+
+        luganda = DASHBOARD_LABELS["luganda"]
+        for key in ENGLISH_LABELS:
+            self.assertIn(key, luganda)
+            self.assertTrue(str(luganda[key]).strip(), key)
+        self.assertNotEqual(luganda["update_retirement"], ENGLISH_LABELS["update_retirement"])
+        self.assertNotEqual(luganda["income"], ENGLISH_LABELS["income"])
+        self.assertNotEqual(luganda["expense"], ENGLISH_LABELS["expense"])
+        self.assertNotEqual(luganda["cat_sales"], ENGLISH_LABELS["cat_sales"])
+        self.assertNotEqual(luganda["cat_rent"], ENGLISH_LABELS["cat_rent"])
+        self.assertNotEqual(luganda["current_age"], ENGLISH_LABELS["current_age"])
+        self.assertNotEqual(luganda["savings_goals"], ENGLISH_LABELS["savings_goals"])
+        self.assertNotEqual(luganda["goal_type_emergency_fund"], ENGLISH_LABELS["goal_type_emergency_fund"])
+        self.assertNotEqual(luganda["save_goal"], ENGLISH_LABELS["save_goal"])
+
+
+class HomePageI18nTests(APITestCase):
+    def test_home_embeds_language_switcher_and_luganda_labels(self):
+        response = self.client.get("/")
+        self.assertEqual(response.status_code, 200)
+        html = response.content.decode()
+        self.assertIn('id="dash-language"', html)
+        self.assertIn('data-i18n="current_age"', html)
+        self.assertIn("Tereeza pulani y'okuwummula", html)
+        self.assertIn("Obutunda", html)
+        self.assertIn("Ennyingiza", html)
+        self.assertIn("Pesa y'ennyumba", html)
+
+    def test_goals_page_embeds_luganda_labels(self):
+        response = self.client.get("/goals/")
+        self.assertEqual(response.status_code, 200)
+        html = response.content.decode()
+        self.assertIn('data-i18n="savings_goals"', html)
+        self.assertIn('data-i18n="add_a_goal"', html)
+        self.assertIn("Ebiruubirirwa by'okutereka", html)
+        self.assertIn("Ensawo y'akatyabaga", html)
+        self.assertIn("Tereka goolo", html)
+
+    def test_commitments_page_embeds_luganda_labels(self):
+        response = self.client.get("/commitments/")
+        self.assertEqual(response.status_code, 200)
+        html = response.content.decode()
+        self.assertIn('data-i18n="saving_checkins"', html)
+        self.assertIn("Okukebera okutereka", html)

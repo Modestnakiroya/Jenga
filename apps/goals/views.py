@@ -2,6 +2,7 @@ from django.views.generic import TemplateView
 from rest_framework import viewsets
 from rest_framework.permissions import IsAuthenticated
 
+from apps.assistant.translations import dashboard_labels_json
 from apps.goals.models import Goal, GoalType
 from apps.goals.serializers import GoalSerializer
 
@@ -24,4 +25,5 @@ class GoalsPageView(TemplateView):
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
         context["goal_types"] = GoalType.choices
+        context["dashboard_labels_json"] = dashboard_labels_json()
         return context

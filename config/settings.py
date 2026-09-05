@@ -127,3 +127,9 @@ CORS_ALLOW_ALL_ORIGINS = env_bool("CORS_ALLOW_ALL_ORIGINS", default=False)
 
 GEMINI_API_KEY = os.getenv("GEMINI_API_KEY", "")
 GEMINI_MODEL = os.getenv("GEMINI_MODEL", "gemini-3.6-flash")
+
+SUNBIRD_API_TOKEN = os.getenv("SUNBIRD_API_TOKEN", "")
+SUNBIRD_TRANSLATE_URL = os.getenv(
+    "SUNBIRD_TRANSLATE_URL",
+    "https://api.sunbird.ai/tasks/nllb_translate",
+)
