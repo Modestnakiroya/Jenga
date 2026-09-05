@@ -418,108 +418,50 @@ class GeminiClientTests(SimpleTestCase):
         self.assertIn("unexpected", str(ctx.exception).lower())
 
 
-def _sunbird_ok(text):
-    response = SimpleNamespace(
-        status_code=200,
-        json=lambda: {"output": {"translated_text": text}},
-    )
-    response.raise_for_status = lambda: None
-    return response
+class DashboardTranslationTests(SimpleTestCase):
+    def test_luganda_covers_modal_and_category_keys(self):
+        from apps.assistant.translations import DASHBOARD_LABELS, ENGLISH_LABELS
+
+        luganda = DASHBOARD_LABELS["luganda"]
+        for key in ENGLISH_LABELS:
+            self.assertIn(key, luganda)
+            self.assertTrue(str(luganda[key]).strip(), key)
+        self.assertNotEqual(luganda["update_retirement"], ENGLISH_LABELS["update_retirement"])
+        self.assertNotEqual(luganda["income"], ENGLISH_LABELS["income"])
+        self.assertNotEqual(luganda["expense"], ENGLISH_LABELS["expense"])
+        self.assertNotEqual(luganda["cat_sales"], ENGLISH_LABELS["cat_sales"])
+        self.assertNotEqual(luganda["cat_rent"], ENGLISH_LABELS["cat_rent"])
+        self.assertNotEqual(luganda["current_age"], ENGLISH_LABELS["current_age"])
+        self.assertNotEqual(luganda["savings_goals"], ENGLISH_LABELS["savings_goals"])
+        self.assertNotEqual(luganda["goal_type_emergency_fund"], ENGLISH_LABELS["goal_type_emergency_fund"])
+        self.assertNotEqual(luganda["save_goal"], ENGLISH_LABELS["save_goal"])
 
 
-class SunbirdClientTests(SimpleTestCase):
-    @override_settings(SUNBIRD_API_TOKEN="test-sunbird-token")
-    @patch.dict("os.environ", {"SUNBIRD_API_TOKEN": "test-sunbird-token"}, clear=False)
-    @patch("apps.assistant.sunbird_client.load_dotenv")
-    @patch("apps.assistant.sunbird_client.requests.post")
-    def test_translates_each_non_english_language(self, mock_post, mock_dotenv):
-        for language, code in LANGUAGE_CODES.items():
-            if language == "english":
-                continue
-            mock_post.reset_mock()
-            mock_post.return_value = _sunbird_ok("ok-" + code)
-            result = translate_text("Required monthly contribution is 10000.00.", language)
-            self.assertEqual(result, "ok-" + code)
-            mock_post.assert_called_once()
-            payload = mock_post.call_args.kwargs["json"]
-            self.assertEqual(payload["source_language"], "eng")
-            self.assertEqual(payload["target_language"], code)
-            self.assertEqual(payload["text"], "Required monthly contribution is 10000.00.")
-            self.assertEqual(mock_post.call_args.kwargs["timeout"], 10)
-            self.assertTrue(
-                mock_post.call_args.kwargs["headers"]["Authorization"].startswith("Bearer ")
-            )
+class HomePageI18nTests(APITestCase):
+    def test_home_embeds_language_switcher_and_luganda_labels(self):
+        response = self.client.get("/")
+        self.assertEqual(response.status_code, 200)
+        html = response.content.decode()
+        self.assertIn('id="dash-language"', html)
+        self.assertIn('data-i18n="current_age"', html)
+        self.assertIn("Tereeza pulani y'okuwummula", html)
+        self.assertIn("Obutunda", html)
+        self.assertIn("Ennyingiza", html)
+        self.assertIn("Pesa y'ennyumba", html)
 
-    @override_settings(SUNBIRD_API_TOKEN="test-sunbird-token")
-    @patch.dict("os.environ", {"SUNBIRD_API_TOKEN": "test-sunbird-token"}, clear=False)
-    @patch("apps.assistant.sunbird_client.load_dotenv")
-    @patch("apps.assistant.sunbird_client.requests.post")
-    def test_english_skips_sunbird_call(self, mock_post, mock_dotenv):
-        result = translate_text("This week income is 100000.00.", "english")
-        self.assertEqual(result, "This week income is 100000.00.")
-        mock_post.assert_not_called()
+    def test_goals_page_embeds_luganda_labels(self):
+        response = self.client.get("/goals/")
+        self.assertEqual(response.status_code, 200)
+        html = response.content.decode()
+        self.assertIn('data-i18n="savings_goals"', html)
+        self.assertIn('data-i18n="add_a_goal"', html)
+        self.assertIn("Ebiruubirirwa by'okutereka", html)
+        self.assertIn("Ensawo y'akatyabaga", html)
+        self.assertIn("Tereka goolo", html)
 
-    @override_settings(SUNBIRD_API_TOKEN="test-sunbird-token")
-    @patch.dict("os.environ", {"SUNBIRD_API_TOKEN": "test-sunbird-token"}, clear=False)
-    @patch("apps.assistant.sunbird_client.load_dotenv")
-    @patch("apps.assistant.sunbird_client.requests.post", side_effect=requests.Timeout)
-    def test_sunbird_failure_falls_back_to_english(self, mock_post, mock_dotenv):
-        result = translate_text("You have not logged any transactions yet.", "luganda")
-        self.assertEqual(result, "You have not logged any transactions yet.")
-        mock_post.assert_called_once()
-
-
-class DashboardLabelTests(SimpleTestCase):
-    def test_every_label_has_all_five_languages(self):
-        keys = set(ENGLISH_LABELS)
-        self.assertEqual(tuple(SUPPORTED_LANGUAGES), ("english", "luganda", "runyankole", "acholi", "ateso"))
-        for language in SUPPORTED_LANGUAGES:
-            self.assertIn(language, DASHBOARD_LABELS)
-            self.assertEqual(set(DASHBOARD_LABELS[language]), keys)
-            for key, value in DASHBOARD_LABELS[language].items():
-                self.assertTrue(str(value).strip(), msg=f"{language}.{key} is empty")
-
-
-class AssistantTranslationAskTests(APITestCase):
-    ask_url = reverse("assistant-ask")
-
-    def setUp(self):
-        self.user = User.objects.create_user(
-            phone_number="+256700999002",
-            password="SecurePass123!",
-            full_name="Luganda Asker",
-            preferred_language="luganda",
-        )
-        BusinessProfile.objects.create(
-            user=self.user,
-            business_name="Ask Stall",
-            business_type="trader",
-            tracking_frequency="weekly",
-        )
-        login = self.client.post(
-            reverse("auth-login"),
-            {"phone_number": self.user.phone_number, "password": "SecurePass123!"},
-            format="json",
-        )
-        self.client.credentials(HTTP_AUTHORIZATION=f"Bearer {login.data['access']}")
-
-    @patch("apps.assistant.views.localize_reply", return_value="Tewali bintu by'okutereka.")
-    @patch("apps.assistant.views.call_llm")
-    def test_ask_uses_translated_reply_for_non_english_user(self, mock_llm, mock_localize):
-        mock_llm.return_value = classify(INTENT_RETIREMENT_CHECK)
-        response = self.client.post(self.ask_url, {"message": "Am I on track for retirement?"}, format="json")
-        self.assertEqual(response.status_code, status.HTTP_200_OK)
-        self.assertEqual(response.data["reply"], "Tewali bintu by'okutereka.")
-        mock_localize.assert_called_once()
-        self.assertEqual(mock_localize.call_args.args[1], "luganda")
-
-    @patch("apps.assistant.sunbird_client.requests.post")
-    @patch("apps.assistant.views.call_llm")
-    def test_english_ask_does_not_call_sunbird(self, mock_llm, mock_post):
-        self.user.preferred_language = "english"
-        self.user.save(update_fields=["preferred_language"])
-        mock_llm.return_value = classify(INTENT_RETIREMENT_CHECK)
-        response = self.client.post(self.ask_url, {"message": "Am I on track for retirement?"}, format="json")
-        self.assertEqual(response.status_code, status.HTTP_200_OK)
-        self.assertEqual(response.data["reply"], NO_RETIREMENT_REPLY)
-        mock_post.assert_not_called()
+    def test_commitments_page_embeds_luganda_labels(self):
+        response = self.client.get("/commitments/")
+        self.assertEqual(response.status_code, 200)
+        html = response.content.decode()
+        self.assertIn('data-i18n="saving_checkins"', html)
+        self.assertIn("Okukebera okutereka", html)
