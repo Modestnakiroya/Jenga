@@ -1,0 +1,76 @@
+<script>
+  (() => {
+    const navs = document.querySelectorAll('nav[aria-label]');
+    const closeMenu = (nav, restoreFocus = false) => {
+      nav.classList.remove('menu-open');
+      const toggle = nav.querySelector('.menu-toggle');
+      if (toggle) {
+        toggle.setAttribute('aria-expanded', 'false');
+        toggle.setAttribute('aria-label', 'Open navigation');
+        if (restoreFocus) toggle.focus();
+      }
+    };
+    navs.forEach((nav) => {
+      nav.querySelectorAll('a[href]').forEach((link) => {
+        if (link.getAttribute('href') === window.location.pathname) {
+          link.setAttribute('aria-current', 'page');
+        }
+      });
+      nav.addEventListener('click', (event) => {
+        const toggle = event.target.closest('.menu-toggle');
+        if (toggle) {
+          // Page handlers toggle the menu before this bubbling listener runs.
+          toggle.setAttribute('aria-label', nav.classList.contains('menu-open') ? 'Close navigation' : 'Open navigation');
+        } else if (event.target.closest('a, button')) {
+          closeMenu(nav);
+        }
+      });
+    });
+    document.addEventListener('click', (event) => {
+      navs.forEach((nav) => { if (!nav.contains(event.target)) closeMenu(nav); });
+    });
+    document.addEventListener('keydown', (event) => {
+      if (event.key === 'Escape') navs.forEach((nav) => {
+        if (nav.classList.contains('menu-open')) closeMenu(nav, true);
+      });
+    });
+    // Keep focus inside an open dialog and return it to the originating action.
+    document.querySelectorAll('.overlay').forEach((overlay) => {
+      const dialog = overlay.querySelector('.card');
+      const heading = dialog.querySelector('h2');
+      const close = dialog.querySelector('button[id$="-close"]');
+      dialog.setAttribute('role', 'dialog');
+      dialog.setAttribute('aria-modal', 'true');
+      dialog.setAttribute('tabindex', '-1');
+      if (heading) {
+        heading.id ||= overlay.id + '-title';
+        dialog.setAttribute('aria-labelledby', heading.id);
+      }
+      let opener;
+      let wasOpen = false;
+      const focusable = () => [...dialog.querySelectorAll('button, input, select, textarea, a[href], [tabindex="0"]')]
+        .filter((element) => !element.disabled && element.getClientRects().length);
+      new MutationObserver(() => {
+        const isOpen = !overlay.classList.contains('hidden');
+        if (isOpen === wasOpen) return;
+        wasOpen = isOpen;
+        if (isOpen) {
+          opener = document.activeElement;
+          (focusable().find((element) => element.matches('input, select, textarea')) || dialog).focus();
+        } else if (opener?.isConnected) opener.focus();
+      }).observe(overlay, { attributes: true, attributeFilter: ['class'] });
+      overlay.addEventListener('keydown', (event) => {
+        if (event.key === 'Escape' && close) { event.preventDefault(); close.click(); }
+        if (event.key !== 'Tab') return;
+        const items = focusable();
+        if (!items.length) { event.preventDefault(); dialog.focus(); return; }
+        const first = items[0], last = items[items.length - 1];
+        if (event.shiftKey && (document.activeElement === first || document.activeElement === dialog)) {
+          event.preventDefault(); last.focus();
+        } else if (!event.shiftKey && document.activeElement === last) {
+          event.preventDefault(); first.focus();
+        }
+      });
+    });
+  })();
+</script>
