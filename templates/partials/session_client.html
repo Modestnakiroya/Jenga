@@ -1,0 +1,22 @@
+<script>
+  let pendingRefresh;
+  async function sessionFetch(url, options = {}) {
+    const send = () => fetch(url, { ...options, headers: { ...options.headers,
+      Authorization: 'Bearer ' + (sessionStorage.getItem('jengaAccessToken') || '') } });
+    let response = await send();
+    if (response.status === 401 && sessionStorage.getItem('jengaRefreshToken')) {
+      if (!pendingRefresh) pendingRefresh = (async () => {
+        const result = await fetch('/api/v1/auth/refresh/', { method: 'POST',
+          headers: {'Content-Type':'application/json'},
+          body: JSON.stringify({refresh:sessionStorage.getItem('jengaRefreshToken')}) });
+        if (!result.ok) return false;
+        const tokens = await result.json();
+        sessionStorage.setItem('jengaAccessToken', tokens.access);
+        if (tokens.refresh) sessionStorage.setItem('jengaRefreshToken', tokens.refresh);
+        return true;
+      })().finally(() => { pendingRefresh = null; });
+      if (await pendingRefresh) response = await send();
+    }
+    return response;
+  }
+</script>

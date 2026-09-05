@@ -71,9 +71,18 @@
     <h1>Savings goals</h1>
     <p class="lead">Track what you are saving toward.</p>
 
-    <div class="goals-layout">
+    <div class="card savings-overview">
+      <div><p class="metric">Current savings across your goals</p><p class="amount large" id="savings-total">Loading...</p><p class="hint" id="savings-count"></p></div>
+      <button type="button" class="primary-action" id="open-goal">Add savings goal</button>
+    </div>
+    <p id="goal-feedback" role="status" aria-live="polite"></p>
+    <section aria-label="Your savings goals">
+      <div id="goals-list"></div>
+      <p id="goals-empty" class="empty hidden">Your next milestone starts here. Add your first savings goal.</p>
+    </section>
+    <div class="overlay hidden" id="goal-overlay">
     <div class="card">
-      <h2 style="margin-top:0;font-size:1rem;" data-i18n="add_a_goal">Add a goal</h2>
+      <div class="card-head"><h2 id="goal-dialog-title">Add a savings goal</h2><button type="button" class="ghost icon-close" id="goal-close" aria-label="Close add goal form"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="m6 6 12 12M6 18 18 6"/></svg></button></div>
       <form id="goal-form">
         <label for="goal-name" data-i18n="goal_name">Name</label>
         <input id="goal-name" required>
@@ -99,13 +108,10 @@
       <div id="message" class="msg" role="status" aria-live="polite"></div>
     </div>
 
-    <section aria-label="Your savings goals">
-      <div id="goals-list"></div>
-      <p id="goals-empty" class="empty hidden">Your next milestone starts here. Add your first savings goal.</p>
-    </section>
     </div>
   </main>
 
+  {% include "partials/session_client.html" %}
   <script>
     const DASHBOARD_LABELS = {{ dashboard_labels_json|safe }};
     let currentLanguage = "english";
@@ -191,7 +197,49 @@
       return { response: response, data: data };
     }
 
+    async function refreshAccessToken() {
+      if (!refreshToken) return false;
+      const response = await fetch("/api/v1/auth/refresh/", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ refresh: refreshToken }),
+      });
+      const data = await response.json().catch(() => ({}));
+      if (!response.ok || !data.access) return false;
+      accessToken = data.access;
+      sessionStorage.setItem("jengaAccessToken", accessToken);
+      if (data.refresh) {
+        refreshToken = data.refresh;
+        sessionStorage.setItem("jengaRefreshToken", refreshToken);
+      }
+      return true;
+    }
+
+    async function apiFetch(url, options) {
+      const headers = Object.assign(
+        { Authorization: "Bearer " + accessToken },
+        (options && options.headers) || {}
+      );
+      let response = await fetch(url, Object.assign({}, options || {}, { headers: headers }));
+      if (response.status === 401 && (await refreshAccessToken())) {
+        headers.Authorization = "Bearer " + accessToken;
+        response = await fetch(url, Object.assign({}, options || {}, { headers: headers }));
+      }
+      const data = await response.json().catch(() => ({}));
+      return { response: response, data: data };
+    }
+
+    const goalOverlay = document.getElementById("goal-overlay");
+    function closeGoal() { goalOverlay.classList.add("hidden"); document.body.classList.remove("modal-open"); }
+    document.getElementById("open-goal").addEventListener("click", () => {
+      message.className = "msg";
+      goalOverlay.classList.remove("hidden"); document.body.classList.add("modal-open");
+    });
+    document.getElementById("goal-close").addEventListener("click", closeGoal);
+    goalOverlay.addEventListener("click", event => { if (event.target === goalOverlay) closeGoal(); });
     function renderGoals(goals) {
+      document.getElementById("savings-total").textContent = formatAmount(goals.reduce((total, goal) => total + Number(goal.current_saved_amount), 0));
+      document.getElementById("savings-count").textContent = goals.length + " savings goals";
       list.replaceChildren();
       empty.classList.toggle("hidden", goals.length > 0);
       if (!goals.length) empty.textContent = t("no_goals_yet");
@@ -222,14 +270,18 @@
     }
 
     async function loadGoals() {
-      if (!accessToken && !refreshToken) {
-        empty.textContent = t("login_to_see_goals");
+      if (!sessionStorage.getItem("jengaAccessToken") && !sessionStorage.getItem("jengaRefreshToken")) {
+        document.getElementById("savings-total").textContent = "Log in to view";
+        empty.textContent = "Log in from the home page to see your goals.";
         empty.classList.remove("hidden");
         return;
       }
-      const { response, data } = await apiFetch("/api/v1/goals/");
+      const response = await sessionFetch("/api/v1/goals/", {
+        headers: { Authorization: "Bearer " + token },
+      });
       if (!response.ok) {
-        empty.textContent = t("could_not_load_goals");
+        document.getElementById("savings-total").textContent = "Unavailable";
+        empty.textContent = "Could not load goals. Log in again from the home page.";
         empty.classList.remove("hidden");
         return;
       }
@@ -238,8 +290,8 @@
 
     document.getElementById("goal-form").addEventListener("submit", async (event) => {
       event.preventDefault();
-      if (!accessToken && !refreshToken) {
-        showMessage(t("login_first"), false);
+      if (!sessionStorage.getItem("jengaAccessToken") && !sessionStorage.getItem("jengaRefreshToken")) {
+        showMessage("Log in from the home page first.", false);
         return;
       }
       const payload = {
@@ -250,7 +302,11 @@
       };
       const targetDate = document.getElementById("goal-date").value;
       if (targetDate) payload.target_date = targetDate;
-      const { response, data } = await apiFetch("/api/v1/goals/", {
+      const button = event.target.querySelector('button[type="submit"]');
+      if (button.disabled) return;
+      button.disabled = true;
+      try {
+      const response = await sessionFetch("/api/v1/goals/", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(payload),
@@ -260,21 +316,20 @@
         return;
       }
       document.getElementById("goal-form").reset();
-      applyLabels();
-      showMessage(t("goal_saved"), true);
+      closeGoal();
+      document.getElementById("goal-feedback").textContent = "Goal saved.";
       await loadGoals();
+      } catch {
+        if (goalOverlay.classList.contains("hidden")) document.getElementById("goal-feedback").textContent = "Goal saved. Refresh to reload your savings.";
+        else showMessage("Could not save. Check your connection and try again.", false);
+      } finally { button.disabled = false; }
     });
 
-    async function start() {
-      if (accessToken || refreshToken) {
-        const { response, data } = await apiFetch("/api/v1/profile/");
-        if (response.ok) currentLanguage = data.preferred_language || "english";
-      }
-      applyLabels();
-      await loadGoals();
-    }
-
-    start();
+    loadGoals().catch(() => {
+      document.getElementById("savings-total").textContent = "Unavailable";
+      empty.textContent = "Could not load savings. Please refresh to try again.";
+      empty.classList.remove("hidden");
+    });
   </script>
   {% include "partials/ui_behaviors.html" %}
 </body>

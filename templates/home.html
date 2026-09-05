@@ -334,7 +334,8 @@
   <main id="main-content" tabindex="-1">
     {% include "partials/navbar.html" with variant="public" %}
 
-    <section class="landing" id="why-jenga">
+    <div id="landing-content">
+    <section class="landing" id="landing-intro">
       <div class="hero-copy">
         <p class="eyebrow">A clearer way to grow</p>
         <h1>Make every shilling work harder.</h1>
@@ -355,6 +356,19 @@
         <p class="visual-note">Small steps. Stronger business.</p>
       </div>
     </section>
+
+    <section class="how-section" id="how-it-works" aria-labelledby="how-title">
+      <p class="eyebrow">How it works</p>
+      <h2 id="how-title">A little clarity, every day.</h2>
+      <p class="lead">Three simple steps to understand your business money and plan ahead.</p>
+      <div class="how-steps">
+        <article><span class="step-number">01</span><h3>Record your day</h3><p>Add income and expenses as they happen, using categories that fit your business.</p></article>
+        <article><span class="step-number">02</span><h3>See where you stand</h3><p>Review your daily, weekly or monthly summary and follow your savings goals.</p></article>
+        <article><span class="step-number">03</span><h3>Plan your next step</h3><p>Check what you can afford and work toward your business and retirement goals.</p></article>
+      </div>
+      <a class="landing-partner-link" href="/partnerships/">Explore SACCO and bank partnerships</a>
+    </section>
+    </div>
 
     <div class="auth-layout hidden" id="auth-area">
       <div class="auth-context" id="auth-intro">
@@ -446,6 +460,7 @@
           <p class="business-name" id="dash-business"></p>
           <h1 id="dash-owner"></h1>
         </div>
+        <div class="dashboard-preferences">
         <div class="frequency-control">
           <label for="dash-frequency">Tracking period</label>
           <select id="dash-frequency" aria-describedby="frequency-status">
@@ -455,11 +470,20 @@
           </select>
           <p id="frequency-status" class="frequency-status" role="status" aria-live="polite"></p>
         </div>
+        <div class="frequency-control">
+          <label for="dash-language">Language</label>
+          <select id="dash-language" aria-describedby="dash-language-error">
+            {% for value, label in languages %}
+              <option value="{{ value }}">{{ label }}</option>
+            {% endfor %}
+          </select>
+          <p id="dash-language-error" class="frequency-status error hidden" role="status" aria-live="polite"></p>
+        </div>
+        </div>
       </header>
 
-      <a id="due-commitment-banner" class="banner hidden" href="/commitments/"></a>
-
       <div class="stack">
+
         <section class="card">
           <div class="card-head">
             <h2 data-i18n="this_period">This period</h2>
@@ -503,18 +527,7 @@
           </div>
         </section>
 
-        <section class="card">
-          <div class="card-head">
-            <h2 data-i18n="ask_jenga">Ask Jenga</h2>
-          </div>
-          <form id="ask-form">
-            <label for="ask-input" data-i18n="ask_prompt">What do you want to know?</label>
-            <input id="ask-input" required placeholder="e.g. Can I afford 20000?">
-            <button type="submit" data-i18n="ask">Ask</button>
-          </form>
-          <p id="ask-reply" class="hint hidden"></p>
-          <div id="ask-status" class="msg" role="status" aria-live="polite"></div>
-        </section>
+
 
         <section class="card">
           <div class="card-head">
@@ -870,25 +883,6 @@
       return now.getFullYear() + "-" + month + "-" + day;
     }
 
-    async function loadDueCommitmentBanner() {
-      const banner = document.getElementById("due-commitment-banner");
-      const { response, data: items } = await apiFetch("/api/v1/commitments/?status=pending");
-      if (!response.ok) {
-        banner.classList.add("hidden");
-        return;
-      }
-      const today = todayLocal();
-      const due = (Array.isArray(items) ? items : []).filter((item) => item.period_end < today);
-      if (!due.length) {
-        banner.classList.add("hidden");
-        return;
-      }
-      banner.textContent = due.length === 1
-        ? t("checkin_one")
-        : t("checkin_many").replace("{count}", due.length);
-      banner.classList.remove("hidden");
-    }
-
     async function loadSafeToSpend() {
       const { response, data } = await apiFetch("/api/v1/planning/available-money/");
       if (!response.ok) return;
@@ -1108,7 +1102,44 @@
       }
     });
 
+    function focusAuth(tabName) {
+      document.getElementById("landing-content").classList.add("hidden");
+      document.getElementById("auth-area").classList.remove("hidden");
+      document.getElementById("auth-intro").classList.remove("hidden");
+      document.getElementById("auth-card").classList.remove("hidden");
+      document.getElementById("nav-login").classList.add("hidden");
+      document.getElementById("nav-back").classList.remove("hidden");
+      document.querySelector('[data-tab="' + tabName + '"]').click();
+      document.getElementById("auth-card").scrollIntoView({ block: "nearest" });
+    }
+
+    function showLanding() {
+      document.getElementById("auth-area").classList.add("hidden");
+      document.getElementById("landing-content").classList.remove("hidden");
+      document.getElementById("nav-back").classList.add("hidden");
+      document.getElementById("nav-login").classList.remove("hidden");
+      window.scrollTo({ top: 0 });
+    }
+
+    document.getElementById("hero-register").addEventListener("click", () => focusAuth("register"));
+    document.getElementById("hero-login").addEventListener("click", () => focusAuth("login"));
+    document.getElementById("nav-login").addEventListener("click", () => focusAuth("login"));
+    document.getElementById("nav-back").addEventListener("click", showLanding);
+    document.getElementById("logout-button").addEventListener("click", () => {
+      clearSession();
+      window.location.reload();
+    });
+    for (const id of ["public-menu-toggle", "dashboard-menu-toggle"]) {
+      document.getElementById(id).addEventListener("click", (event) => {
+        const nav = event.currentTarget.closest("nav");
+        event.currentTarget.setAttribute("aria-expanded", String(nav.classList.toggle("menu-open")));
+      });
+    }
+
     function showDashboard(profile) {
+      document.getElementById("public-nav").classList.add("hidden");
+      document.getElementById("landing-content").classList.add("hidden");
+      document.getElementById("auth-area").classList.add("hidden");
       currentLanguage = profile.preferred_language || "english";
       applyDashboardLabels();
       syncLanguageControl();
@@ -1124,7 +1155,7 @@
       loadSafeToSpend();
       loadGoalPreview();
       loadRetirementPreview();
-      loadDueCommitmentBanner();
+
     }
 
     document.getElementById("dash-language").addEventListener("change", async (event) => {
@@ -1188,7 +1219,9 @@
     registerForm.addEventListener("submit", async (event) => {
       event.preventDefault();
       const button = registerForm.querySelector("button[type=submit]");
+      if (button.disabled) return;
       button.disabled = true;
+      try {
       const { response, data } = await postJson("/api/v1/auth/register/", {
         full_name: registerForm.full_name.value.trim(),
         phone_number: registerForm.phone_number.value.trim(),
@@ -1198,7 +1231,6 @@
         tracking_frequency: registerForm.tracking_frequency.value,
         preferred_language: registerForm.preferred_language.value,
       });
-      button.disabled = false;
       if (!response.ok) {
         showMessage(fieldErrors(data), false);
         return;
@@ -1206,17 +1238,23 @@
       document.getElementById("login_phone").value = document.getElementById("phone_number").value.trim();
       document.querySelector('[data-tab="login"]').click();
       showMessage("Account created. Enter your password to log in.", true);
+      } catch {
+        showMessage("Could not connect. Please try again. If this continues, check that the server is running.", false);
+      } finally {
+        button.disabled = false;
+      }
     });
 
     loginForm.addEventListener("submit", async (event) => {
       event.preventDefault();
       const button = loginForm.querySelector("button[type=submit]");
+      if (button.disabled) return;
       button.disabled = true;
+      try {
       const { response, data } = await postJson("/api/v1/auth/login/", {
         phone_number: document.getElementById("login_phone").value.trim(),
         password: document.getElementById("login_password").value,
       });
-      button.disabled = false;
       if (!response.ok) {
         showMessage(fieldErrors(data), false);
         return;
@@ -1228,6 +1266,11 @@
         return;
       }
       showDashboard(profile);
+      } catch {
+        showMessage("Could not connect. Please try again. If this continues, check that the server is running.", false);
+      } finally {
+        button.disabled = false;
+      }
     });
 
     const resetConfirm = document.getElementById("reset_confirm");
@@ -1372,39 +1415,6 @@
       renderAllocation(data);
     });
 
-    document.getElementById("ask-form").addEventListener("submit", async (event) => {
-      event.preventDefault();
-      const reply = document.getElementById("ask-reply");
-      const box = document.getElementById("ask-status");
-      const button = document.querySelector("#ask-form button[type=submit]");
-      reply.classList.add("hidden");
-      box.className = "msg";
-      button.disabled = true;
-      const { response, data } = await apiFetch("/api/v1/assistant/ask/", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          message: document.getElementById("ask-input").value.trim(),
-        }),
-      });
-      button.disabled = false;
-      if (!response.ok) {
-        box.textContent = fieldErrors(data);
-        box.className = "msg show err";
-        return;
-      }
-      reply.textContent = data.reply || "";
-      reply.classList.remove("hidden");
-      if (data.intent === "RECORD_TRANSACTION") {
-        await loadRecentActivity();
-        await loadFinancialSummary();
-        await loadSafeToSpend();
-      }
-      if (data.intent === "CHECK_SUMMARY") {
-        await loadFinancialSummary();
-      }
-    });
-
     document.getElementById("open-afford").addEventListener("click", openAffordForm);
     document.getElementById("afford-close").addEventListener("click", closeAffordForm);
     affordOverlay.addEventListener("click", (event) => {
@@ -1439,17 +1449,35 @@
 
     async function restoreSession() {
       if (!accessToken && !refreshToken) return;
-      const { response, data } = await apiFetch("/api/v1/profile/");
-      if (!response.ok) {
-        clearSession();
-        return;
+      try {
+        const { response, data } = await apiFetch("/api/v1/profile/");
+        if (!response.ok) {
+          if (response.status === 401) clearSession();
+          focusAuth("login");
+          showMessage(response.status === 401 ? "Your session expired. Please log in again." : "Could not load your profile. Please try again.", false);
+          return;
+        }
+        showDashboard(data);
+      } catch {
+        focusAuth("login");
+        showMessage("Could not reconnect. Check your connection and try again.", false);
       }
-      showDashboard(data);
     }
 
-    restoreSession();
-    if (new URLSearchParams(window.location.search).get("start") === "signup") {
+    document.querySelectorAll('a[href="/#how-it-works"]').forEach((link) => {
+      link.addEventListener("click", () => {
+        showLanding();
+        document.getElementById("dashboard").classList.add("hidden");
+        document.getElementById("public-nav").classList.remove("hidden");
+      });
+    });
+    const explicitSignup = window.location.pathname === "/signup/" || new URLSearchParams(window.location.search).get("start") === "signup";
+    if (explicitSignup) {
       focusAuth("register");
+    } else if (new URLSearchParams(window.location.search).get("start") === "login") {
+      focusAuth("login");
+    } else if (window.location.hash !== "#how-it-works") {
+      restoreSession();
     }
   </script>
   {% include "partials/ui_behaviors.html" %}
