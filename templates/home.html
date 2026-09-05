@@ -1,0 +1,904 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Jenga</title>
+  <style>
+    :root {
+      --bg: #f4efe6;
+      --card: #fffdf8;
+      --ink: #1f1a14;
+      --muted: #6b6258;
+      --line: #e4d8c8;
+      --accent: #c45c26;
+      --accent-dark: #9a4318;
+      --ok: #1f7a4d;
+      --err: #b42318;
+      --income: #1f7a4d;
+      --expense: #b42318;
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      font-family: "Segoe UI", system-ui, sans-serif;
+      background: var(--bg);
+      color: var(--ink);
+    }
+    main {
+      max-width: 440px;
+      margin: 2.5rem auto;
+      padding: 0 1rem 3rem;
+    }
+    h1 { margin: 0 0 0.35rem; font-size: 1.75rem; }
+    .lead { color: var(--muted); margin: 0 0 1.5rem; }
+    .card {
+      background: var(--card);
+      border: 1px solid var(--line);
+      border-radius: 16px;
+      padding: 1.25rem;
+      box-shadow: 0 10px 30px rgba(31, 26, 20, 0.06);
+    }
+    .tabs { display: flex; gap: 0.5rem; margin-bottom: 1rem; }
+    .tabs button {
+      flex: 1;
+      border: 1px solid var(--line);
+      background: transparent;
+      padding: 0.65rem;
+      border-radius: 999px;
+      cursor: pointer;
+      font-weight: 600;
+    }
+    .tabs button.active {
+      background: var(--accent);
+      border-color: var(--accent);
+      color: white;
+    }
+    label { display: block; font-size: 0.85rem; font-weight: 600; margin: 0.85rem 0 0.35rem; }
+    input, select {
+      width: 100%;
+      padding: 0.7rem 0.75rem;
+      border: 1px solid var(--line);
+      border-radius: 10px;
+      font: inherit;
+      background: white;
+    }
+    button[type="submit"] {
+      width: 100%;
+      margin-top: 1.2rem;
+      padding: 0.85rem;
+      border: 0;
+      border-radius: 10px;
+      background: var(--accent);
+      color: white;
+      font-weight: 700;
+      cursor: pointer;
+    }
+    button[type="submit"]:hover { background: var(--accent-dark); }
+    button[type="submit"]:disabled { opacity: 0.65; cursor: wait; }
+    .msg { margin-top: 1rem; padding: 0.75rem 0.85rem; border-radius: 10px; display: none; white-space: pre-wrap; }
+    .msg.show { display: block; }
+    .msg.ok { background: #e8f6ee; color: var(--ok); }
+    .msg.err { background: #fdecea; color: var(--err); }
+    .hidden { display: none !important; }
+    body.modal-open { overflow: hidden; }
+
+    .dash-header {
+      display: flex;
+      align-items: flex-start;
+      justify-content: space-between;
+      gap: 1rem;
+      margin-bottom: 1.25rem;
+    }
+    .dash-header h1 { font-size: 1.45rem; margin: 0.15rem 0 0; }
+    .business-name { margin: 0; font-weight: 700; color: var(--accent-dark); }
+    .freq-label {
+      flex-shrink: 0;
+      margin-top: 0.2rem;
+      padding: 0.3rem 0.65rem;
+      border-radius: 999px;
+      border: 1px solid var(--line);
+      background: var(--card);
+      font-size: 0.75rem;
+      font-weight: 700;
+    }
+    .stack { display: grid; gap: 0.85rem; }
+    .card-head {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 0.75rem;
+      margin-bottom: 0.85rem;
+    }
+    .card-head h2 {
+      margin: 0;
+      font-size: 1rem;
+    }
+    .sample {
+      font-size: 0.68rem;
+      font-weight: 700;
+      letter-spacing: 0.03em;
+      text-transform: uppercase;
+      color: var(--muted);
+      border: 1px solid var(--line);
+      border-radius: 999px;
+      padding: 0.15rem 0.5rem;
+    }
+    .summary-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 0.75rem;
+    }
+    .summary-grid .full { grid-column: 1 / -1; }
+    .metric { color: var(--muted); font-size: 0.78rem; margin: 0 0 0.25rem; }
+    .amount { margin: 0; font-size: 1.15rem; font-weight: 700; }
+    .amount.large { font-size: 1.85rem; }
+    .hint { margin: 0.45rem 0 0; color: var(--muted); font-size: 0.85rem; }
+    .actions {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 0.6rem;
+    }
+    .actions button, .actions a {
+      border: 1px solid var(--line);
+      background: white;
+      border-radius: 12px;
+      padding: 0.8rem 0.6rem;
+      font-weight: 700;
+      cursor: pointer;
+      text-align: center;
+      text-decoration: none;
+      color: inherit;
+    }
+    .actions button:hover, .actions a:hover { border-color: var(--accent); color: var(--accent-dark); }
+    .goal-name { margin: 0 0 0.45rem; font-weight: 600; }
+    .bar {
+      height: 10px;
+      background: #efe6d8;
+      border-radius: 999px;
+      overflow: hidden;
+    }
+    .bar span {
+      display: block;
+      width: 62%;
+      height: 100%;
+      background: var(--accent);
+    }
+    .goal-meta {
+      display: flex;
+      justify-content: space-between;
+      margin: 0.4rem 0 0.9rem;
+      color: var(--muted);
+      font-size: 0.8rem;
+    }
+    .activity { list-style: none; margin: 0; padding: 0; }
+    .activity li {
+      display: flex;
+      justify-content: space-between;
+      gap: 0.75rem;
+      padding: 0.7rem 0;
+      border-top: 1px solid var(--line);
+    }
+    .activity li:first-child { border-top: 0; padding-top: 0; }
+    .activity .desc { margin: 0; font-weight: 600; }
+    .activity .date { margin: 0.2rem 0 0; color: var(--muted); font-size: 0.78rem; }
+    .tag {
+      display: inline-block;
+      margin-left: 0.35rem;
+      font-size: 0.68rem;
+      font-weight: 700;
+      text-transform: uppercase;
+    }
+    .tag.income { color: var(--income); }
+    .tag.expense { color: var(--expense); }
+    .row-amount { font-weight: 700; white-space: nowrap; }
+    .row-amount.income { color: var(--income); }
+    .row-amount.expense { color: var(--expense); }
+    .overlay {
+      position: fixed;
+      inset: 0;
+      background: rgba(31, 26, 20, 0.35);
+      display: flex;
+      align-items: flex-end;
+      justify-content: center;
+      padding: 1rem;
+      z-index: 20;
+    }
+    .overlay .card { width: min(440px, 100%); margin-bottom: 1rem; }
+    .empty { margin: 0; color: var(--muted); }
+    .form-actions { display: flex; gap: 0.6rem; margin-top: 1rem; }
+    .form-actions button { flex: 1; margin-top: 0; }
+    .ghost {
+      border: 1px solid var(--line);
+      background: white;
+      color: var(--ink);
+    }
+    .choices {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 0.45rem;
+    }
+    .choices button {
+      border: 1px solid var(--line);
+      background: white;
+      border-radius: 999px;
+      padding: 0.45rem 0.75rem;
+      font-weight: 600;
+      cursor: pointer;
+    }
+    .choices button.active {
+      background: var(--accent);
+      border-color: var(--accent);
+      color: white;
+    }
+    .text-link {
+      border: 0;
+      background: none;
+      padding: 0;
+      color: var(--accent-dark);
+      font: inherit;
+      font-weight: 700;
+      cursor: pointer;
+      text-decoration: underline;
+    }
+  </style>
+</head>
+<body>
+  <main>
+    <div id="auth-intro">
+      <h1>Jenga</h1>
+      <p class="lead">Create an account with your phone number, then sign in.</p>
+    </div>
+
+    <div class="card" id="auth-card">
+      <div class="tabs">
+        <button type="button" class="active" data-tab="register">Create account</button>
+        <button type="button" data-tab="login">Log in</button>
+      </div>
+
+      <form id="register-form">
+        <label for="full_name">Full name</label>
+        <input id="full_name" name="full_name" required autocomplete="name">
+
+        <label for="phone_number">Phone number</label>
+        <input id="phone_number" name="phone_number" required placeholder="+2567XXXXXXXX or 07XXXXXXXX" autocomplete="tel">
+
+        <label for="password">Password</label>
+        <input id="password" name="password" type="password" required minlength="8" autocomplete="new-password">
+
+        <label for="business_name">Business name</label>
+        <input id="business_name" name="business_name" required>
+
+        <label for="business_type">Business type</label>
+        <select id="business_type" name="business_type" required>
+          {% for value, label in business_types %}
+            <option value="{{ value }}">{{ label }}</option>
+          {% endfor %}
+        </select>
+
+        <label for="tracking_frequency">How often do you want to track?</label>
+        <select id="tracking_frequency" name="tracking_frequency">
+          {% for value, label in tracking_frequencies %}
+            <option value="{{ value }}"{% if value == "weekly" %} selected{% endif %}>{{ label }}</option>
+          {% endfor %}
+        </select>
+
+        <label for="preferred_language">Preferred language</label>
+        <select id="preferred_language" name="preferred_language">
+          {% for value, label in languages %}
+            <option value="{{ value }}">{{ label }}</option>
+          {% endfor %}
+        </select>
+
+        <button type="submit">Create account</button>
+      </form>
+
+      <form id="login-form" class="hidden">
+        <label for="login_phone">Phone number</label>
+        <input id="login_phone" name="login_phone" required autocomplete="tel">
+
+        <label for="login_password">Password</label>
+        <input id="login_password" name="login_password" type="password" required autocomplete="current-password">
+
+        <button type="submit">Log in</button>
+        <button type="button" class="ghost" id="show-reset" style="margin-top:0.6rem;">Forgot password? Set a new one</button>
+      </form>
+
+      <form id="reset-form" class="hidden">
+        <p class="lead" style="margin-bottom:0.5rem;">This phone is already registered. Set a new password, then log in.</p>
+        <label for="reset_phone">Phone number</label>
+        <input id="reset_phone" name="reset_phone" required autocomplete="tel">
+
+        <label for="reset_password">New password</label>
+        <input id="reset_password" name="reset_password" type="password" required minlength="8" autocomplete="new-password">
+
+        <button type="submit">Update password</button>
+        <button type="button" class="ghost" id="show-login" style="margin-top:0.6rem;">Back to log in</button>
+      </form>
+
+      <div id="message" class="msg"></div>
+    </div>
+
+    {# Dashboard: only the header uses real profile data. All other cards are static placeholders. #}
+    <div class="hidden" id="dashboard">
+      <header class="dash-header">
+        <div>
+          <p class="business-name" id="dash-business"></p>
+          <h1 id="dash-owner"></h1>
+        </div>
+        <span class="freq-label" id="dash-frequency"></span>
+      </header>
+
+      <div class="stack">
+        <section class="card">
+          <div class="card-head">
+            <h2>This period</h2>
+            <span class="freq-label" id="summary-period-label"></span>
+          </div>
+          <div class="summary-grid">
+            <div>
+              <p class="metric">Income</p>
+              <p class="amount" id="summary-income">UGX 0</p>
+            </div>
+            <div>
+              <p class="metric">Expenses</p>
+              <p class="amount" id="summary-expenses">UGX 0</p>
+            </div>
+            <div class="full">
+              <p class="metric">Estimated profit</p>
+              <p class="amount" id="summary-profit">UGX 0</p>
+            </div>
+          </div>
+        </section>
+
+        {# PLACEHOLDER: safe to spend — wire to planning later #}
+        <section class="card" data-placeholder="safe-to-spend">
+          <div class="card-head">
+            <h2>Safe to spend</h2>
+            <span class="sample">Sample data</span>
+          </div>
+          <p class="metric">Safely available</p>
+          <p class="amount large">UGX 145,000</p>
+          <p class="hint">Based on your upcoming expenses and reserve.</p>
+        </section>
+
+        {# PLACEHOLDER: quick actions — no backend yet #}
+        <section class="card" data-placeholder="quick-actions">
+          <div class="card-head">
+            <h2>Quick actions</h2>
+            <span class="sample">Coming soon</span>
+          </div>
+          <div class="actions">
+            <button type="button" data-record="income">Record income</button>
+            <button type="button" data-record="expense">Record expense</button>
+            <button type="button" data-coming-soon>Can I afford this?</button>
+            <a href="/goals/">View savings goals</a>
+          </div>
+        </section>
+
+        <section class="card">
+          <div class="card-head">
+            <h2>Goals and retirement</h2>
+          </div>
+          <p id="dash-goal-empty" class="empty hidden">No goals yet, add one</p>
+          <div id="dash-goal-preview" class="hidden">
+            <p class="goal-name" id="dash-goal-name"></p>
+            <div class="bar" aria-hidden="true"><span id="dash-goal-bar"></span></div>
+            <div class="goal-meta">
+              <span id="dash-goal-amounts"></span>
+              <span id="dash-goal-percent"></span>
+            </div>
+          </div>
+          <p id="dash-retirement-setup" class="hint hidden">
+            <button type="button" class="text-link" id="open-retirement-setup">Set up your retirement plan</button>
+          </p>
+          <p id="dash-retirement-status" class="hint hidden">
+            <span id="dash-retirement-label"></span>
+            <button type="button" class="text-link" id="open-retirement-edit">Update</button>
+          </p>
+        </section>
+
+        <section class="card">
+          <div class="card-head">
+            <h2>Recent activity</h2>
+          </div>
+          <p id="activity-empty" class="empty hidden">No transactions yet.</p>
+          <ul class="activity" id="recent-activity"></ul>
+        </section>
+      </div>
+
+      <div class="overlay hidden" id="retirement-overlay">
+        <div class="card">
+          <div class="card-head">
+            <h2 id="retirement-form-title">Retirement plan</h2>
+            <button type="button" class="ghost" id="retirement-close" style="width:auto;padding:0.4rem 0.7rem;border-radius:8px;font-weight:700;">Close</button>
+          </div>
+          <form id="retirement-form">
+            <label for="retirement-current-age">Current age</label>
+            <input id="retirement-current-age" name="current_age" type="number" min="1" step="1" required>
+
+            <label for="retirement-desired-age">Desired retirement age</label>
+            <input id="retirement-desired-age" name="desired_retirement_age" type="number" min="2" step="1" required>
+
+            <label for="retirement-savings">Current savings (UGX)</label>
+            <input id="retirement-savings" name="current_savings" type="number" min="0" step="0.01" value="0">
+
+            <label for="retirement-pension">Existing pension balance (UGX)</label>
+            <input id="retirement-pension" name="existing_pension_balance" type="number" min="0" step="0.01" value="0">
+
+            <label for="retirement-fund">Desired retirement fund (UGX)</label>
+            <input id="retirement-fund" name="desired_retirement_fund" type="number" min="0.01" step="0.01" required>
+
+            <label for="retirement-contribution">Current monthly contribution (UGX)</label>
+            <input id="retirement-contribution" name="current_monthly_contribution" type="number" min="0" step="0.01" value="0">
+
+            <div id="retirement-message" class="msg"></div>
+            <div class="form-actions">
+              <button type="submit">Save plan</button>
+            </div>
+          </form>
+        </div>
+      </div>
+
+      <div class="overlay hidden" id="record-overlay">
+        <div class="card">
+          <div class="card-head">
+            <h2 id="record-title">Record transaction</h2>
+            <button type="button" class="ghost" id="record-close" style="width:auto;padding:0.4rem 0.7rem;border-radius:8px;font-weight:700;">Close</button>
+          </div>
+          <form id="record-form">
+            <input type="hidden" name="type" id="record-type">
+
+            <label for="record-amount">Amount (UGX)</label>
+            <input id="record-amount" name="amount" type="number" min="0.01" step="0.01" required>
+
+            <label>Category</label>
+            <input type="hidden" id="record-category" name="category">
+            <div class="choices" id="record-category-choices"></div>
+
+            <label for="record-description">Description (optional)</label>
+            <input id="record-description" name="description">
+
+            <label for="record-date">Date</label>
+            <input id="record-date" name="date" type="date" required>
+
+            <div id="record-message" class="msg"></div>
+            <div class="form-actions">
+              <button type="submit">Save</button>
+            </div>
+          </form>
+        </div>
+      </div>
+    </div>
+  </main>
+
+  <select id="income-category-options" hidden>
+    {% for value, label in income_categories %}
+      <option value="{{ value }}">{{ label }}</option>
+    {% endfor %}
+  </select>
+  <select id="expense-category-options" hidden>
+    {% for value, label in expense_categories %}
+      <option value="{{ value }}">{{ label }}</option>
+    {% endfor %}
+  </select>
+
+  <script>
+    const registerForm = document.getElementById("register-form");
+    const loginForm = document.getElementById("login-form");
+    const resetForm = document.getElementById("reset-form");
+    const message = document.getElementById("message");
+    const tabs = document.querySelectorAll(".tabs button");
+    const recordForm = document.getElementById("record-form");
+    const recordOverlay = document.getElementById("record-overlay");
+    const recordMessage = document.getElementById("record-message");
+    const retirementForm = document.getElementById("retirement-form");
+    const retirementOverlay = document.getElementById("retirement-overlay");
+    const retirementMessage = document.getElementById("retirement-message");
+    let accessToken = sessionStorage.getItem("jengaAccessToken") || "";
+
+    function showMessage(text, ok) {
+      message.textContent = text;
+      message.className = "msg show " + (ok ? "ok" : "err");
+    }
+
+    function fieldErrors(data) {
+      if (!data || typeof data !== "object") return "Something went wrong.";
+      if (data.detail) return typeof data.detail === "string" ? data.detail : JSON.stringify(data.detail);
+      return Object.entries(data).map(([key, value]) => {
+        const text = Array.isArray(value) ? value.join(" ") : value;
+        return key + ": " + text;
+      }).join("\n");
+    }
+
+    async function postJson(url, body) {
+      const response = await fetch(url, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(body),
+      });
+      const data = await response.json().catch(() => ({}));
+      return { response, data };
+    }
+
+    function frequencyLabel(value) {
+      const labels = { daily: "Daily", weekly: "Weekly", monthly: "Monthly" };
+      return labels[value] || value;
+    }
+
+    function formatAmount(value) {
+      const number = Number(value);
+      return "UGX " + number.toLocaleString("en-UG", { maximumFractionDigits: 0 });
+    }
+
+    function formatDate(value) {
+      const date = new Date(value + "T00:00:00");
+      return date.toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric" });
+    }
+
+    function categoryLabel(value) {
+      for (const id of ["income-category-options", "expense-category-options"]) {
+        const option = document.getElementById(id).querySelector('option[value="' + value + '"]');
+        if (option) return option.textContent;
+      }
+      return value;
+    }
+
+    async function loadGoalPreview() {
+      const response = await fetch("/api/v1/goals/", {
+        headers: { Authorization: "Bearer " + accessToken },
+      });
+      const goals = await response.json();
+      const preview = document.getElementById("dash-goal-preview");
+      const empty = document.getElementById("dash-goal-empty");
+      const active = Array.isArray(goals) ? goals.filter((goal) => goal.status === "active") : [];
+      if (!active.length) {
+        preview.classList.add("hidden");
+        empty.classList.remove("hidden");
+        return;
+      }
+      const goal = active[0];
+      const percent = Math.min(100, Number(goal.progress_percentage));
+      empty.classList.add("hidden");
+      preview.classList.remove("hidden");
+      document.getElementById("dash-goal-name").textContent = goal.name;
+      document.getElementById("dash-goal-bar").style.width = percent + "%";
+      document.getElementById("dash-goal-amounts").textContent =
+        formatAmount(goal.current_saved_amount) + " of " + formatAmount(goal.target_amount);
+      document.getElementById("dash-goal-percent").textContent = Math.round(percent) + "%";
+    }
+
+    async function loadRetirementPreview() {
+      const setup = document.getElementById("dash-retirement-setup");
+      const status = document.getElementById("dash-retirement-status");
+      const response = await fetch("/api/v1/retirement/projection/", {
+        headers: { Authorization: "Bearer " + accessToken },
+      });
+      if (response.status === 404) {
+        status.classList.add("hidden");
+        setup.classList.remove("hidden");
+        return;
+      }
+      if (!response.ok) return;
+      const data = await response.json();
+      setup.classList.add("hidden");
+      status.classList.remove("hidden");
+      document.getElementById("dash-retirement-label").textContent =
+        "Retirement: " + (data.on_track ? "On track" : "Needs attention");
+    }
+
+    function closeRetirementForm() {
+      retirementOverlay.classList.add("hidden");
+      document.body.classList.remove("modal-open");
+    }
+
+    async function openRetirementForm() {
+      retirementForm.reset();
+      retirementMessage.className = "msg";
+      document.getElementById("retirement-form-title").textContent = "Set up your retirement plan";
+      const response = await fetch("/api/v1/retirement/profile/", {
+        headers: { Authorization: "Bearer " + accessToken },
+      });
+      if (response.ok) {
+        const profile = await response.json();
+        document.getElementById("retirement-form-title").textContent = "Update retirement plan";
+        document.getElementById("retirement-current-age").value = profile.current_age;
+        document.getElementById("retirement-desired-age").value = profile.desired_retirement_age;
+        document.getElementById("retirement-savings").value = profile.current_savings;
+        document.getElementById("retirement-pension").value = profile.existing_pension_balance;
+        document.getElementById("retirement-fund").value = profile.desired_retirement_fund;
+        document.getElementById("retirement-contribution").value = profile.current_monthly_contribution;
+      }
+      retirementOverlay.classList.remove("hidden");
+      document.body.classList.add("modal-open");
+    }
+
+    async function loadFinancialSummary() {
+      const response = await fetch("/api/v1/summary/", {
+        headers: { Authorization: "Bearer " + accessToken },
+      });
+      const data = await response.json();
+      if (!response.ok) return;
+      document.getElementById("summary-income").textContent = formatAmount(data.total_income);
+      document.getElementById("summary-expenses").textContent = formatAmount(data.total_expenses);
+      document.getElementById("summary-profit").textContent = formatAmount(data.estimated_profit);
+      document.getElementById("summary-period-label").textContent = frequencyLabel(data.period);
+    }
+
+    async function loadRecentActivity() {
+      const response = await fetch("/api/v1/transactions/", {
+        headers: { Authorization: "Bearer " + accessToken },
+      });
+      const items = await response.json();
+      const list = document.getElementById("recent-activity");
+      const empty = document.getElementById("activity-empty");
+      list.replaceChildren();
+      const recent = Array.isArray(items) ? items.slice(0, 5) : [];
+      empty.classList.toggle("hidden", recent.length > 0);
+      recent.forEach((item) => {
+        const isIncome = item.type === "income";
+        const li = document.createElement("li");
+        const info = document.createElement("div");
+        const desc = document.createElement("p");
+        desc.className = "desc";
+        desc.append(item.description || categoryLabel(item.category), " ");
+        const tag = document.createElement("span");
+        tag.className = "tag " + item.type;
+        tag.textContent = isIncome ? "Income" : "Expense";
+        desc.append(tag);
+        const date = document.createElement("p");
+        date.className = "date";
+        date.textContent = formatDate(item.date);
+        info.append(desc, date);
+        const amount = document.createElement("p");
+        amount.className = "row-amount " + item.type;
+        amount.textContent = (isIncome ? "+ " : "− ") + formatAmount(item.amount);
+        li.append(info, amount);
+        list.append(li);
+      });
+    }
+
+    function fillCategories(type) {
+      const sourceId = type === "income" ? "income-category-options" : "expense-category-options";
+      const box = document.getElementById("record-category-choices");
+      const field = document.getElementById("record-category");
+      field.value = "";
+      box.replaceChildren();
+      document.getElementById(sourceId).querySelectorAll("option").forEach((option) => {
+        const choice = document.createElement("button");
+        choice.type = "button";
+        choice.textContent = option.textContent;
+        choice.dataset.value = option.value;
+        choice.addEventListener("click", () => {
+          field.value = option.value;
+          box.querySelectorAll("button").forEach((item) => item.classList.remove("active"));
+          choice.classList.add("active");
+        });
+        box.append(choice);
+      });
+    }
+
+    function closeRecordForm() {
+      recordOverlay.classList.add("hidden");
+      document.body.classList.remove("modal-open");
+    }
+
+    function openRecordForm(type) {
+      recordForm.reset();
+      recordMessage.className = "msg";
+      document.getElementById("record-type").value = type;
+      document.getElementById("record-title").textContent =
+        type === "income" ? "Record income" : "Record expense";
+      document.getElementById("record-date").value = new Date().toISOString().slice(0, 10);
+      document.getElementById("record-date").max = new Date().toISOString().slice(0, 10);
+      fillCategories(type);
+      recordOverlay.classList.remove("hidden");
+      document.body.classList.add("modal-open");
+    }
+
+    function showDashboard(profile) {
+      document.getElementById("auth-intro").classList.add("hidden");
+      document.getElementById("auth-card").classList.add("hidden");
+      document.getElementById("dashboard").classList.remove("hidden");
+      document.getElementById("dash-business").textContent = profile.business_profile.business_name;
+      document.getElementById("dash-owner").textContent = profile.full_name;
+      document.getElementById("dash-frequency").textContent = frequencyLabel(
+        profile.business_profile.tracking_frequency
+      );
+      loadRecentActivity();
+      loadFinancialSummary();
+      loadGoalPreview();
+      loadRetirementPreview();
+    }
+
+    tabs.forEach((tab) => {
+      tab.addEventListener("click", () => {
+        tabs.forEach((item) => item.classList.remove("active"));
+        tab.classList.add("active");
+        const isRegister = tab.dataset.tab === "register";
+        registerForm.classList.toggle("hidden", !isRegister);
+        loginForm.classList.toggle("hidden", isRegister);
+        resetForm.classList.add("hidden");
+        message.className = "msg";
+      });
+    });
+
+    document.getElementById("show-reset").addEventListener("click", () => {
+      loginForm.classList.add("hidden");
+      resetForm.classList.remove("hidden");
+      document.getElementById("reset_phone").value = document.getElementById("login_phone").value;
+      message.className = "msg";
+    });
+
+    document.getElementById("show-login").addEventListener("click", () => {
+      resetForm.classList.add("hidden");
+      loginForm.classList.remove("hidden");
+      message.className = "msg";
+    });
+
+    registerForm.addEventListener("submit", async (event) => {
+      event.preventDefault();
+      const button = registerForm.querySelector("button[type=submit]");
+      button.disabled = true;
+      const { response, data } = await postJson("/api/v1/auth/register/", {
+        full_name: registerForm.full_name.value.trim(),
+        phone_number: registerForm.phone_number.value.trim(),
+        password: registerForm.password.value,
+        business_name: registerForm.business_name.value.trim(),
+        business_type: registerForm.business_type.value,
+        tracking_frequency: registerForm.tracking_frequency.value,
+        preferred_language: registerForm.preferred_language.value,
+      });
+      button.disabled = false;
+      if (!response.ok) {
+        showMessage(fieldErrors(data), false);
+        return;
+      }
+      document.getElementById("login_phone").value = document.getElementById("phone_number").value.trim();
+      document.querySelector('[data-tab="login"]').click();
+      showMessage("Account created. Enter your password to log in.", true);
+    });
+
+    loginForm.addEventListener("submit", async (event) => {
+      event.preventDefault();
+      const button = loginForm.querySelector("button[type=submit]");
+      button.disabled = true;
+      const { response, data } = await postJson("/api/v1/auth/login/", {
+        phone_number: document.getElementById("login_phone").value.trim(),
+        password: document.getElementById("login_password").value,
+      });
+      button.disabled = false;
+      if (!response.ok) {
+        showMessage(fieldErrors(data), false);
+        return;
+      }
+      const profileRes = await fetch("/api/v1/profile/", {
+        headers: { Authorization: "Bearer " + data.access },
+      });
+      const profile = await profileRes.json();
+      accessToken = data.access;
+      sessionStorage.setItem("jengaAccessToken", accessToken);
+      showDashboard(profile);
+    });
+
+    resetForm.addEventListener("submit", async (event) => {
+      event.preventDefault();
+      const button = resetForm.querySelector("button[type=submit]");
+      button.disabled = true;
+      const { response, data } = await postJson("/api/v1/auth/reset-password/", {
+        phone_number: document.getElementById("reset_phone").value.trim(),
+        password: document.getElementById("reset_password").value,
+      });
+      button.disabled = false;
+      if (!response.ok) {
+        showMessage(fieldErrors(data), false);
+        return;
+      }
+      document.getElementById("login_phone").value = document.getElementById("reset_phone").value.trim();
+      resetForm.classList.add("hidden");
+      loginForm.classList.remove("hidden");
+      showMessage("Password updated. Log in with your new password.", true);
+    });
+
+    document.querySelectorAll("[data-record]").forEach((button) => {
+      button.addEventListener("click", () => openRecordForm(button.dataset.record));
+    });
+
+    document.getElementById("open-retirement-setup").addEventListener("click", openRetirementForm);
+    document.getElementById("open-retirement-edit").addEventListener("click", openRetirementForm);
+    document.getElementById("retirement-close").addEventListener("click", closeRetirementForm);
+    retirementOverlay.addEventListener("click", (event) => {
+      if (event.target === retirementOverlay) closeRetirementForm();
+    });
+    retirementForm.addEventListener("submit", async (event) => {
+      event.preventDefault();
+      const button = retirementForm.querySelector("button[type=submit]");
+      button.disabled = true;
+      const { response, data } = await fetch("/api/v1/retirement/profile/", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: "Bearer " + accessToken,
+        },
+        body: JSON.stringify({
+          current_age: Number(document.getElementById("retirement-current-age").value),
+          desired_retirement_age: Number(document.getElementById("retirement-desired-age").value),
+          current_savings: document.getElementById("retirement-savings").value || "0",
+          existing_pension_balance: document.getElementById("retirement-pension").value || "0",
+          desired_retirement_fund: document.getElementById("retirement-fund").value,
+          current_monthly_contribution: document.getElementById("retirement-contribution").value || "0",
+        }),
+      }).then(async (response) => ({ response, data: await response.json().catch(() => ({})) }));
+      button.disabled = false;
+      if (!response.ok) {
+        retirementMessage.textContent = fieldErrors(data);
+        retirementMessage.className = "msg show err";
+        return;
+      }
+      closeRetirementForm();
+      await loadRetirementPreview();
+    });
+
+    document.getElementById("record-close").addEventListener("click", closeRecordForm);
+    recordOverlay.addEventListener("click", (event) => {
+      if (event.target === recordOverlay) closeRecordForm();
+    });
+
+    recordForm.addEventListener("submit", async (event) => {
+      event.preventDefault();
+      const category = document.getElementById("record-category").value;
+      if (!category) {
+        recordMessage.textContent = "Choose a category.";
+        recordMessage.className = "msg show err";
+        return;
+      }
+      const button = recordForm.querySelector("button[type=submit]");
+      button.disabled = true;
+      const { response, data } = await fetch("/api/v1/transactions/", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: "Bearer " + accessToken,
+        },
+        body: JSON.stringify({
+          type: document.getElementById("record-type").value,
+          amount: document.getElementById("record-amount").value,
+          category: document.getElementById("record-category").value,
+          description: document.getElementById("record-description").value.trim(),
+          date: document.getElementById("record-date").value,
+        }),
+      }).then(async (response) => ({ response, data: await response.json().catch(() => ({})) }));
+      button.disabled = false;
+      if (!response.ok) {
+        recordMessage.textContent = fieldErrors(data);
+        recordMessage.className = "msg show err";
+        return;
+      }
+      closeRecordForm();
+      await loadRecentActivity();
+      await loadFinancialSummary();
+    });
+
+    document.querySelectorAll("[data-coming-soon]").forEach((button) => {
+      button.addEventListener("click", () => {
+        alert("Coming soon");
+      });
+    });
+
+    async function restoreSession() {
+      if (!accessToken) return;
+      const response = await fetch("/api/v1/profile/", {
+        headers: { Authorization: "Bearer " + accessToken },
+      });
+      if (!response.ok) {
+        accessToken = "";
+        sessionStorage.removeItem("jengaAccessToken");
+        return;
+      }
+      showDashboard(await response.json());
+    }
+
+    restoreSession();
+  </script>
+</body>
+</html>

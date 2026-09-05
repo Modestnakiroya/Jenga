@@ -1,0 +1,227 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Jenga — Savings goals</title>
+  <style>
+    :root {
+      --bg: #f4efe6;
+      --card: #fffdf8;
+      --ink: #1f1a14;
+      --muted: #6b6258;
+      --line: #e4d8c8;
+      --accent: #c45c26;
+      --accent-dark: #9a4318;
+      --ok: #1f7a4d;
+      --err: #b42318;
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      font-family: "Segoe UI", system-ui, sans-serif;
+      background: var(--bg);
+      color: var(--ink);
+    }
+    main {
+      max-width: 440px;
+      margin: 2.5rem auto;
+      padding: 0 1rem 3rem;
+    }
+    h1 { margin: 0 0 0.35rem; font-size: 1.75rem; }
+    .lead { color: var(--muted); margin: 0 0 1.25rem; }
+    a { color: var(--accent-dark); }
+    .card {
+      background: var(--card);
+      border: 1px solid var(--line);
+      border-radius: 16px;
+      padding: 1.25rem;
+      box-shadow: 0 10px 30px rgba(31, 26, 20, 0.06);
+      margin-bottom: 0.85rem;
+    }
+    label { display: block; font-size: 0.85rem; font-weight: 600; margin: 0.85rem 0 0.35rem; }
+    input, select {
+      width: 100%;
+      padding: 0.7rem 0.75rem;
+      border: 1px solid var(--line);
+      border-radius: 10px;
+      font: inherit;
+      background: white;
+    }
+    button[type="submit"] {
+      width: 100%;
+      margin-top: 1.2rem;
+      padding: 0.85rem;
+      border: 0;
+      border-radius: 10px;
+      background: var(--accent);
+      color: white;
+      font-weight: 700;
+      cursor: pointer;
+    }
+    .msg { margin-top: 1rem; padding: 0.75rem 0.85rem; border-radius: 10px; display: none; white-space: pre-wrap; }
+    .msg.show { display: block; }
+    .msg.ok { background: #e8f6ee; color: var(--ok); }
+    .msg.err { background: #fdecea; color: var(--err); }
+    .empty { color: var(--muted); }
+    .goal-name { margin: 0 0 0.45rem; font-weight: 600; }
+    .meta { margin: 0 0 0.65rem; color: var(--muted); font-size: 0.8rem; }
+    .bar {
+      height: 10px;
+      background: #efe6d8;
+      border-radius: 999px;
+      overflow: hidden;
+    }
+    .bar span { display: block; height: 100%; background: var(--accent); }
+    .goal-meta {
+      display: flex;
+      justify-content: space-between;
+      margin: 0.4rem 0 0;
+      color: var(--muted);
+      font-size: 0.8rem;
+    }
+  </style>
+</head>
+<body>
+  <main>
+    <p><a href="/">← Back to dashboard</a></p>
+    <h1>Savings goals</h1>
+    <p class="lead">Track what you are saving toward.</p>
+
+    <div class="card">
+      <h2 style="margin-top:0;font-size:1rem;">Add a goal</h2>
+      <form id="goal-form">
+        <label for="goal-name">Name</label>
+        <input id="goal-name" required>
+
+        <label for="goal-type">Type</label>
+        <select id="goal-type" required>
+          {% for value, label in goal_types %}
+            <option value="{{ value }}">{{ label }}</option>
+          {% endfor %}
+        </select>
+
+        <label for="goal-target">Target amount (UGX)</label>
+        <input id="goal-target" type="number" min="0.01" step="0.01" required>
+
+        <label for="goal-saved">Already saved (UGX)</label>
+        <input id="goal-saved" type="number" min="0" step="0.01" value="0">
+
+        <label for="goal-date">Target date (optional)</label>
+        <input id="goal-date" type="date">
+
+        <button type="submit">Save goal</button>
+      </form>
+      <div id="message" class="msg"></div>
+    </div>
+
+    <div id="goals-list"></div>
+    <p id="goals-empty" class="empty hidden">No goals yet, add one.</p>
+  </main>
+
+  <script>
+    const token = sessionStorage.getItem("jengaAccessToken");
+    const list = document.getElementById("goals-list");
+    const empty = document.getElementById("goals-empty");
+    const message = document.getElementById("message");
+
+    function formatAmount(value) {
+      return "UGX " + Number(value).toLocaleString("en-UG", { maximumFractionDigits: 0 });
+    }
+
+    function showMessage(text, ok) {
+      message.textContent = text;
+      message.className = "msg show " + (ok ? "ok" : "err");
+    }
+
+    function fieldErrors(data) {
+      if (!data || typeof data !== "object") return "Something went wrong.";
+      if (data.detail) return typeof data.detail === "string" ? data.detail : JSON.stringify(data.detail);
+      return Object.entries(data).map(([key, value]) => {
+        const text = Array.isArray(value) ? value.join(" ") : value;
+        return key + ": " + text;
+      }).join("\n");
+    }
+
+    function renderGoals(goals) {
+      list.replaceChildren();
+      empty.classList.toggle("hidden", goals.length > 0);
+      goals.forEach((goal) => {
+        const card = document.createElement("div");
+        card.className = "card";
+        const title = document.createElement("p");
+        title.className = "goal-name";
+        title.textContent = goal.name;
+        const meta = document.createElement("p");
+        meta.className = "meta";
+        meta.textContent = goal.goal_type.replaceAll("_", " ") + " · " + goal.status;
+        const bar = document.createElement("div");
+        bar.className = "bar";
+        const fill = document.createElement("span");
+        fill.style.width = Number(goal.progress_percentage) + "%";
+        bar.append(fill);
+        const amounts = document.createElement("div");
+        amounts.className = "goal-meta";
+        const saved = document.createElement("span");
+        saved.textContent = formatAmount(goal.current_saved_amount) + " of " + formatAmount(goal.target_amount);
+        const pct = document.createElement("span");
+        pct.textContent = Math.round(Number(goal.progress_percentage)) + "%";
+        amounts.append(saved, pct);
+        card.append(title, meta, bar, amounts);
+        list.append(card);
+      });
+    }
+
+    async function loadGoals() {
+      if (!token) {
+        empty.textContent = "Log in from the home page to see your goals.";
+        empty.classList.remove("hidden");
+        return;
+      }
+      const response = await fetch("/api/v1/goals/", {
+        headers: { Authorization: "Bearer " + token },
+      });
+      if (!response.ok) {
+        empty.textContent = "Could not load goals. Log in again from the home page.";
+        empty.classList.remove("hidden");
+        return;
+      }
+      renderGoals(await response.json());
+    }
+
+    document.getElementById("goal-form").addEventListener("submit", async (event) => {
+      event.preventDefault();
+      if (!token) {
+        showMessage("Log in from the home page first.", false);
+        return;
+      }
+      const payload = {
+        name: document.getElementById("goal-name").value.trim(),
+        goal_type: document.getElementById("goal-type").value,
+        target_amount: document.getElementById("goal-target").value,
+        current_saved_amount: document.getElementById("goal-saved").value || "0",
+      };
+      const targetDate = document.getElementById("goal-date").value;
+      if (targetDate) payload.target_date = targetDate;
+      const response = await fetch("/api/v1/goals/", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: "Bearer " + token,
+        },
+        body: JSON.stringify(payload),
+      });
+      const data = await response.json().catch(() => ({}));
+      if (!response.ok) {
+        showMessage(fieldErrors(data), false);
+        return;
+      }
+      document.getElementById("goal-form").reset();
+      showMessage("Goal saved.", true);
+      await loadGoals();
+    });
+
+    loadGoals();
+  </script>
+</body>
+</html>
