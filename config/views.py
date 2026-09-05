@@ -22,3 +22,11 @@ class HomeView(TemplateView):
         ]
         context["dashboard_labels_json"] = dashboard_labels_json()
         return context
+
+
+class HowItWorksView(TemplateView):
+    template_name = "how_it_works.html"
+
+
+class ProfilePageView(TemplateView):
+    template_name = "profile.html"
