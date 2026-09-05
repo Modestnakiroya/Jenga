@@ -24,3 +24,11 @@ class HomeView(TemplateView):
         ]
         context["dashboard_labels_json"] = json.dumps(DASHBOARD_LABELS, ensure_ascii=True)
         return context
+
+
+class HowItWorksView(TemplateView):
+    template_name = "how_it_works.html"
+
+
+class ProfilePageView(TemplateView):
+    template_name = "profile.html"
