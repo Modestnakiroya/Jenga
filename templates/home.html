@@ -102,6 +102,39 @@
       font-size: 0.75rem;
       font-weight: 700;
     }
+    .dash-meta {
+      display: flex;
+      flex-direction: column;
+      align-items: flex-end;
+      gap: 0.45rem;
+      flex-shrink: 0;
+    }
+    .lang-switch {
+      display: flex;
+      align-items: center;
+      gap: 0.4rem;
+    }
+    .lang-switch label {
+      margin: 0;
+      font-size: 0.72rem;
+      font-weight: 700;
+      color: var(--muted);
+    }
+    .lang-switch select {
+      width: auto;
+      min-width: 8.75rem;
+      padding: 0.3rem 0.5rem;
+      font-size: 0.78rem;
+      font-weight: 700;
+    }
+    .lang-error {
+      margin: 0;
+      max-width: 14rem;
+      text-align: right;
+      color: var(--err);
+      font-size: 0.75rem;
+      font-weight: 600;
+    }
     .stack { display: grid; gap: 0.85rem; }
     .card-head {
       display: flex;
@@ -357,7 +390,18 @@
           <p class="business-name" id="dash-business"></p>
           <h1 id="dash-owner"></h1>
         </div>
-        <span class="freq-label" id="dash-frequency"></span>
+        <div class="dash-meta">
+          <span class="freq-label" id="dash-frequency"></span>
+          <div class="lang-switch">
+            <label for="dash-language">Language</label>
+            <select id="dash-language" aria-label="Preferred language">
+              {% for value, label in languages %}
+                <option value="{{ value }}">{{ label }}</option>
+              {% endfor %}
+            </select>
+          </div>
+          <p id="dash-language-error" class="lang-error hidden"></p>
+        </div>
       </header>
 
       <a id="due-commitment-banner" class="banner hidden" href="/commitments/"></a>
@@ -365,20 +409,20 @@
       <div class="stack">
         <section class="card">
           <div class="card-head">
-            <h2>This period</h2>
+            <h2 data-i18n="this_period">This period</h2>
             <span class="freq-label" id="summary-period-label"></span>
           </div>
           <div class="summary-grid">
             <div>
-              <p class="metric">Income</p>
+              <p class="metric" data-i18n="income">Income</p>
               <p class="amount" id="summary-income">UGX 0</p>
             </div>
             <div>
-              <p class="metric">Expenses</p>
+              <p class="metric" data-i18n="expenses">Expenses</p>
               <p class="amount" id="summary-expenses">UGX 0</p>
             </div>
             <div class="full">
-              <p class="metric">Estimated profit</p>
+              <p class="metric" data-i18n="estimated_profit">Estimated profit</p>
               <p class="amount" id="summary-profit">UGX 0</p>
             </div>
           </div>
@@ -386,34 +430,34 @@
 
         <section class="card">
           <div class="card-head">
-            <h2>Safe to spend</h2>
+            <h2 data-i18n="safe_to_spend">Safe to spend</h2>
           </div>
-          <p class="metric">Safely available</p>
+          <p class="metric" data-i18n="safely_available">Safely available</p>
           <p class="amount large" id="safe-to-spend-amount">UGX 0</p>
           <p class="hint">Cash on hand minus upcoming expenses and a 15% emergency reserve.</p>
         </section>
 
         <section class="card">
           <div class="card-head">
-            <h2>Quick actions</h2>
+            <h2 data-i18n="quick_actions">Quick actions</h2>
           </div>
           <div class="actions">
-            <button type="button" data-record="income">Record income</button>
-            <button type="button" data-record="expense">Record expense</button>
-            <button type="button" id="open-afford">Can I afford this?</button>
-            <a href="/goals/">View savings goals</a>
-            <button type="button" class="wide" id="open-allocate">What should I do with this?</button>
+            <button type="button" data-record="income" data-i18n="record_income">Record income</button>
+            <button type="button" data-record="expense" data-i18n="record_expense">Record expense</button>
+            <button type="button" id="open-afford" data-i18n="can_i_afford">Can I afford this?</button>
+            <a href="/goals/" data-i18n="view_savings_goals">View savings goals</a>
+            <button type="button" class="wide" id="open-allocate" data-i18n="what_should_i_do">What should I do with this?</button>
           </div>
         </section>
 
         <section class="card">
           <div class="card-head">
-            <h2>Ask Jenga</h2>
+            <h2 data-i18n="ask_jenga">Ask Jenga</h2>
           </div>
           <form id="ask-form">
-            <label for="ask-input">What do you want to know?</label>
+            <label for="ask-input" data-i18n="ask_prompt">What do you want to know?</label>
             <input id="ask-input" required placeholder="e.g. Can I afford 20000?">
-            <button type="submit">Ask</button>
+            <button type="submit" data-i18n="ask">Ask</button>
           </form>
           <p id="ask-reply" class="hint hidden"></p>
           <div id="ask-status" class="msg"></div>
@@ -421,9 +465,9 @@
 
         <section class="card">
           <div class="card-head">
-            <h2>Goals and retirement</h2>
+            <h2 data-i18n="goals_and_retirement">Goals and retirement</h2>
           </div>
-          <p id="dash-goal-empty" class="empty hidden">No goals yet, add one</p>
+          <p id="dash-goal-empty" class="empty hidden" data-i18n="no_goals">No goals yet, add one</p>
           <div id="dash-goal-preview" class="hidden">
             <p class="goal-name" id="dash-goal-name"></p>
             <div class="bar" aria-hidden="true"><span id="dash-goal-bar"></span></div>
@@ -443,9 +487,9 @@
 
         <section class="card">
           <div class="card-head">
-            <h2>Recent activity</h2>
+            <h2 data-i18n="recent_activity">Recent activity</h2>
           </div>
-          <p id="activity-empty" class="empty hidden">No transactions yet.</p>
+          <p id="activity-empty" class="empty hidden" data-i18n="no_transactions">No transactions yet.</p>
           <ul class="activity" id="recent-activity"></ul>
         </section>
       </div>
@@ -566,6 +610,30 @@
   </select>
 
   <script>
+    const DASHBOARD_LABELS = {{ dashboard_labels_json|safe }};
+    let currentLanguage = "english";
+
+    function t(key) {
+      const pack = DASHBOARD_LABELS[currentLanguage] || DASHBOARD_LABELS.english || {};
+      return pack[key] || (DASHBOARD_LABELS.english || {})[key] || key;
+    }
+
+    function applyDashboardLabels() {
+      document.querySelectorAll("[data-i18n]").forEach((el) => {
+        el.textContent = t(el.getAttribute("data-i18n"));
+      });
+    }
+
+    function syncLanguageControl() {
+      const select = document.getElementById("dash-language");
+      const error = document.getElementById("dash-language-error");
+      if (select) select.value = currentLanguage;
+      if (error) {
+        error.textContent = "";
+        error.classList.add("hidden");
+      }
+    }
+
     const registerForm = document.getElementById("register-form");
     const loginForm = document.getElementById("login-form");
     const resetForm = document.getElementById("reset-form");
@@ -653,8 +721,7 @@
     }
 
     function frequencyLabel(value) {
-      const labels = { daily: "Daily", weekly: "Weekly", monthly: "Monthly" };
-      return labels[value] || value;
+      return t(value) || value;
     }
 
     function formatAmount(value) {
@@ -789,10 +856,10 @@
 
     function renderAllocation(data) {
       const labels = {
-        reinvestment: "Reinvestment",
-        personal: "Personal",
-        emergency: "Emergency",
-        goals: "Goals",
+        reinvestment: t("reinvestment"),
+        personal: t("personal"),
+        emergency: t("emergency"),
+        goals: t("goals"),
       };
       const tone = {
         Good: "green",
@@ -886,7 +953,7 @@
         desc.append(item.description || categoryLabel(item.category), " ");
         const tag = document.createElement("span");
         tag.className = "tag " + item.type;
-        tag.textContent = isIncome ? "Income" : "Expense";
+        tag.textContent = isIncome ? t("income") : t("expense");
         desc.append(tag);
         const date = document.createElement("p");
         date.className = "date";
@@ -930,7 +997,7 @@
       recordMessage.className = "msg";
       document.getElementById("record-type").value = type;
       document.getElementById("record-title").textContent =
-        type === "income" ? "Record income" : "Record expense";
+        type === "income" ? t("record_income") : t("record_expense");
       document.getElementById("record-date").value = new Date().toISOString().slice(0, 10);
       document.getElementById("record-date").max = new Date().toISOString().slice(0, 10);
       fillCategories(type);
@@ -939,6 +1006,9 @@
     }
 
     function showDashboard(profile) {
+      currentLanguage = profile.preferred_language || "english";
+      applyDashboardLabels();
+      syncLanguageControl();
       document.getElementById("auth-intro").classList.add("hidden");
       document.getElementById("auth-card").classList.add("hidden");
       document.getElementById("dashboard").classList.remove("hidden");
@@ -954,6 +1024,36 @@
       loadRetirementPreview();
       loadDueCommitmentBanner();
     }
+
+    document.getElementById("dash-language").addEventListener("change", async (event) => {
+      const next = event.target.value;
+      const previous = currentLanguage;
+      const error = document.getElementById("dash-language-error");
+      if (next === previous) return;
+      error.textContent = "";
+      error.classList.add("hidden");
+      event.target.disabled = true;
+      try {
+        const { response, data } = await apiFetch("/api/v1/profile/", {
+          method: "PATCH",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ preferred_language: next }),
+        });
+        if (!response.ok) {
+          event.target.value = previous;
+          error.textContent = fieldErrors(data);
+          error.classList.remove("hidden");
+          return;
+        }
+        showDashboard(data);
+      } catch (exc) {
+        event.target.value = previous;
+        error.textContent = "Could not update language. Please try again.";
+        error.classList.remove("hidden");
+      } finally {
+        event.target.disabled = false;
+      }
+    });
 
     tabs.forEach((tab) => {
       tab.addEventListener("click", () => {
