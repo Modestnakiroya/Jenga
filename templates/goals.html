@@ -114,8 +114,8 @@
   {% include "partials/session_client.html" %}
   {% include "partials/i18n.html" %}
   <script>
-    const DASHBOARD_LABELS = {{ dashboard_labels_json|safe }};
-    let currentLanguage = "english";
+    // The shared i18n script owns the catalog and selected language.
+    // Redeclaring its global constants prevents this entire script from running.
     const list = document.getElementById("goals-list");
     const empty = document.getElementById("goals-empty");
     const message = document.getElementById("message");
@@ -185,6 +185,36 @@
         pct.textContent = Math.round(Number(goal.progress_percentage)) + "%";
         amounts.append(saved, pct);
         card.append(title, meta, bar, amounts);
+        if (goal.status !== "abandoned") {
+          const editor = document.createElement("details");
+          const toggle = document.createElement("summary"); toggle.textContent = "Add savings";
+          toggle.style.cssText = "cursor:pointer;margin-top:1rem;color:var(--accent);font-weight:600";
+          const form = document.createElement("form");
+          const label = document.createElement("label"); label.textContent = "Amount to add (UGX)";
+          const input = document.createElement("input"); input.type = "number"; input.min = "0.01"; input.step = "0.01"; input.max = "9999999999.99"; input.required = true;
+          input.id = "contribution-" + goal.id; label.htmlFor = input.id;
+          const hint = document.createElement("p"); hint.className = "hint"; hint.textContent = "Record money you have already saved. This does not transfer money.";
+          const submit = document.createElement("button"); submit.type = "submit"; submit.textContent = "Save contribution";
+          const cancel = document.createElement("button"); cancel.type = "button"; cancel.className = "ghost"; cancel.textContent = "Cancel";
+          const feedback = document.createElement("p"); feedback.setAttribute("role", "status");
+          cancel.addEventListener("click", () => { if (!submit.disabled) { form.reset(); editor.open = false; feedback.textContent = ""; } });
+          form.append(label, input, hint, submit, cancel, feedback); editor.append(toggle, form); card.append(editor);
+          form.addEventListener("submit", async event => {
+            event.preventDefault(); if (submit.disabled) return;
+            submit.disabled = true; cancel.disabled = true; feedback.textContent = "Saving...";
+            try {
+              const response = await sessionFetch("/api/v1/goals/" + goal.id + "/add-savings/", {method:"POST", headers:{"Content-Type":"application/json"}, body:JSON.stringify({amount:input.value})});
+              const data = await response.json();
+              if (!response.ok) { feedback.textContent = Object.values(data).flat().join(" "); return; }
+              // Update from the server response before refreshing other goal totals.
+              Object.assign(goal, data);
+              editor.open = false; form.reset();
+              document.getElementById("goal-feedback").textContent = "Savings added to " + goal.name + ".";
+              try { await loadGoals(); } catch { document.getElementById("goal-feedback").textContent = "Savings saved. Refresh the page to see the latest totals."; }
+            } catch { feedback.textContent = "Could not confirm the save. Refresh and check your balance before trying again."; }
+            finally { submit.disabled = false; cancel.disabled = false; }
+          });
+        }
         list.append(card);
       });
     }
