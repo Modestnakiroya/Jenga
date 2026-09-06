@@ -218,6 +218,20 @@ def handle_how_much_save(user, parameters, message=""):
     goal = goals.first()
     if amount is not None and (goal is None or not _has_transaction_history(user)):
         return _hypothetical_allocation(user, amount)
+    if amount is None and _has_transaction_history(user):
+        from apps.planning.savings_advice import savings_advice
+
+        profile = getattr(user, "business_profile", None)
+        period = profile.tracking_frequency if profile else "weekly"
+        advice = savings_advice(user, period)
+        if advice["status"] == "unavailable":
+            return {"error": advice["explanation"], "facts": {}}
+        return {"error": None, "facts": {
+            "recommended_savings": advice["amount"],
+            "advice_status": advice["status"],
+            "explanation": advice["explanation"],
+            "period": period,
+        }}
     if goal is None:
         return {"error": NO_GOAL_REPLY, "facts": {}}
     remaining = goal.target_amount - goal.current_saved_amount
@@ -262,6 +276,8 @@ def handle_general_question(user, parameters, message=""):
             "facts": {"question_type": "literacy"},
             "use_literacy_llm": True,
         }
+    if _has_transaction_history(user):
+        return handle_check_summary(user, parameters, message=message)
     return {"error": PERSONAL_GENERAL_REPLY, "facts": {"question_type": "personal"}}
 
 

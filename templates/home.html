@@ -176,6 +176,7 @@
     .metric { color: var(--muted); font-size: 0.78rem; margin: 0 0 0.25rem; }
     .amount { margin: 0; font-size: 1.15rem; font-weight: 700; }
     .amount.large { font-size: 1.85rem; }
+    .spend-card .amount.large { font-size: 1.35rem; }
     .hint { margin: 0.45rem 0 0; color: var(--muted); font-size: 0.85rem; }
     .actions {
       display: grid;
@@ -187,7 +188,8 @@
       background: white;
       border-radius: 12px;
       padding: 0.8rem 0.6rem;
-      font-weight: 700;
+      font-size: 0.86rem;
+      font-weight: 500;
       cursor: pointer;
       text-align: center;
       text-decoration: none;
@@ -482,11 +484,11 @@
           </div>
           <div class="summary-grid">
             <div>
-              <p class="metric" data-i18n="income">Income</p>
+              <p class="metric" style="display:flex;justify-content:space-between;align-items:center"><span data-i18n="income">Income</span><button type="button" data-record="income" aria-label="Add income" title="Add income" style="border:0;border-radius:50%;width:32px;height:32px;padding:0;background:var(--accent);color:white;font-size:1.4rem">+</button></p>
               <p class="amount" id="summary-income">UGX 0</p>
             </div>
             <div>
-              <p class="metric" data-i18n="expenses">Expenses</p>
+              <p class="metric" style="display:flex;justify-content:space-between;align-items:center"><span data-i18n="expenses">Expenses</span><button type="button" data-record="expense" aria-label="Add expense" title="Add expense" style="border:0;border-radius:50%;width:32px;height:32px;padding:0;background:var(--accent);color:white;font-size:1.4rem">+</button></p>
               <p class="amount" id="summary-expenses">UGX 0</p>
             </div>
             <div class="full">
@@ -498,11 +500,11 @@
 
         <section class="card spend-card">
           <div class="card-head">
-            <h2 data-i18n="safe_to_spend">Safe to spend</h2>
+            <h2>Advised to save</h2>
           </div>
-          <p class="metric" data-i18n="safely_available">Safely available</p>
-          <p class="amount large" id="safe-to-spend-amount">UGX 0</p>
-          <p class="hint" data-i18n="safe_hint">Cash on hand minus upcoming expenses and a 15% emergency reserve.</p>
+          <p class="metric">AI recommendation for this period</p>
+          <p class="amount large" id="safe-to-spend-amount">Not calculated</p>
+          <p class="hint" id="savings-advice-explanation">Based on your recorded income, expenses, upcoming bills and goals.</p><p class="hint">AI uses financial totals and goal amounts, without your name or transaction descriptions. Review it against costs you have not recorded. No money is moved.</p><button type="button" class="ghost" id="retry-savings-advice">Refresh advice</button>
         </section>
 
         <section class="card">
@@ -510,15 +512,11 @@
             <h2 data-i18n="quick_actions">Quick actions</h2>
           </div>
           <div class="actions">
-            <button type="button" data-record="income" data-i18n="record_income">Record income</button>
-            <button type="button" data-record="expense" data-i18n="record_expense">Record expense</button>
             <button type="button" id="open-afford" data-i18n="can_i_afford">Can I afford this?</button>
             <a href="/goals/" data-i18n="view_savings_goals">View savings goals</a>
             <button type="button" class="wide" id="open-allocate" data-i18n="what_should_i_do">What should I do with this?</button>
           </div>
         </section>
-
-
 
         <section class="card">
           <div class="card-head">
@@ -865,12 +863,29 @@
       return now.getFullYear() + "-" + month + "-" + day;
     }
 
+    let adviceRequest = 0;
     async function loadSafeToSpend() {
-      const { response, data } = await apiFetch("/api/v1/planning/available-money/");
-      if (!response.ok) return;
-      document.getElementById("safe-to-spend-amount").textContent =
-        formatAmount(data.safely_available_amount);
+      // Ignore older responses if the user changes period or records another entry.
+      const requestId = ++adviceRequest;
+      const amount = document.getElementById("safe-to-spend-amount");
+      const explanation = document.getElementById("savings-advice-explanation");
+      amount.textContent = "Thinking...";
+      explanation.textContent = "Reviewing your recorded finances...";
+      try {
+        const period = document.getElementById("dash-frequency").value;
+        const { response, data } = await apiFetch("/api/v1/planning/savings-advice/?period=" + encodeURIComponent(period));
+        if (requestId !== adviceRequest) return;
+        if (!response.ok) throw new Error("Advice unavailable");
+        amount.textContent = data.amount === null ? "Not available yet" : formatAmount(data.amount);
+        explanation.textContent = data.explanation;
+      } catch {
+        if (requestId !== adviceRequest) return;
+        amount.textContent = "Unavailable";
+        explanation.textContent = "Could not load AI advice. Please try again.";
+      }
     }
+    document.getElementById("retry-savings-advice").addEventListener("click", loadSafeToSpend);
+
 
     function closeAffordForm() {
       affordOverlay.classList.add("hidden");
@@ -976,6 +991,7 @@
       document.getElementById("summary-expenses").textContent = formatAmount(data.total_expenses);
       document.getElementById("summary-profit").textContent = formatAmount(data.estimated_profit);
       document.getElementById("summary-period-label").textContent = frequencyLabel(data.period);
+      loadSafeToSpend();
       return true;
     }
 
@@ -1137,7 +1153,6 @@
       document.getElementById("dash-frequency").value = savedFrequency;
       loadRecentActivity();
       loadFinancialSummary();
-      loadSafeToSpend();
       loadGoalPreview();
       loadRetirementPreview();
 
@@ -1330,7 +1345,7 @@
       closeRecordForm();
       await loadRecentActivity();
       await loadFinancialSummary();
-      await loadSafeToSpend();
+
       if (recordedType === "income") {
         await showAllocationFor(recordedAmount);
       }
