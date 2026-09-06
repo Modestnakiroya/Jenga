@@ -42,6 +42,7 @@ INSTALLED_APPS = [
     "apps.planning.apps.PlanningConfig",
     "apps.commitments.apps.CommitmentsConfig",
     "apps.assistant.apps.AssistantConfig",
+    "apps.insights.apps.InsightsConfig",
     "apps.sms_gateway.apps.SmsGatewayConfig",
 ]
 
@@ -118,10 +119,12 @@ REST_FRAMEWORK = {
 }
 
 SIMPLE_JWT = {
+    "CHECK_REVOKE_TOKEN": True,
     "TOKEN_OBTAIN_SERIALIZER": "apps.accounts.serializers.PhoneTokenObtainPairSerializer",
     "ACCESS_TOKEN_LIFETIME": timedelta(hours=12),
     "REFRESH_TOKEN_LIFETIME": timedelta(days=7),
 }
+
 
 CORS_ALLOWED_ORIGINS = env_list("CORS_ALLOWED_ORIGINS")
 CORS_ALLOW_ALL_ORIGINS = env_bool("CORS_ALLOW_ALL_ORIGINS", default=False)
@@ -137,3 +140,5 @@ SUNBIRD_TRANSLATE_URL = os.getenv(
     "SUNBIRD_TRANSLATE_URL",
     "https://api.sunbird.ai/tasks/nllb_translate",
 )
+
+LOGOUT_REDIRECT_URL = "/"

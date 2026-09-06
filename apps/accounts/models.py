@@ -65,7 +65,6 @@ class UserManager(BaseUserManager):
 
 
 class User(AbstractBaseUser, PermissionsMixin):
-    # TODO: Add OTP/SMS phone verification before activating new accounts.
     phone_number = models.CharField(
         max_length=16,
         unique=True,
@@ -78,6 +77,7 @@ class User(AbstractBaseUser, PermissionsMixin):
         choices=Language.choices,
         default=Language.ENGLISH,
     )
+    share_sacco_insights = models.BooleanField(default=False)
     is_staff = models.BooleanField(default=False)
     is_active = models.BooleanField(default=True)
     date_joined = models.DateTimeField(auto_now_add=True)
@@ -108,3 +108,36 @@ class BusinessProfile(models.Model):
 
     def __str__(self):
         return self.business_name
+
+
+class PartnerAccount(models.Model):
+    """A recorded account with optional administrator-verified terms; not a live bank connection."""
+    user = models.ForeignKey(User, on_delete=models.CASCADE, related_name="partner_accounts")
+    institution_name = models.CharField(max_length=180)
+    institution_type = models.CharField(max_length=8, choices=[("bank", "Bank"), ("sacco", "SACCO")])
+    account_name = models.CharField(max_length=180)
+    account_last_four = models.CharField(max_length=4, blank=True)
+    currency = models.CharField(max_length=3, default="UGX", choices=[("UGX", "UGX"), ("USD", "USD"), ("KES", "KES")])
+    interest_rate = models.DecimalField(max_digits=6, decimal_places=3, null=True, blank=True)
+    interest_period = models.CharField(max_length=8, choices=[("annual", "Per year"), ("monthly", "Per month")], default="annual")
+    minimum_deposit = models.DecimalField(max_digits=16, decimal_places=2, null=True, blank=True)
+    terms_updated_on = models.DateField(null=True, blank=True)
+    terms_verified = models.BooleanField(default=False)
+
+    class Meta:
+        ordering = ["institution_name", "account_name", "id"]
+
+    def clean(self):
+        from django.core.exceptions import ValidationError
+        errors = {}
+        if self.interest_rate is not None and not 0 <= self.interest_rate <= 100:
+            errors["interest_rate"] = "Enter a percentage from 0 to 100."
+        if self.minimum_deposit is not None and self.minimum_deposit < 0:
+            errors["minimum_deposit"] = "Minimum deposit cannot be negative."
+        if self.account_last_four and (len(self.account_last_four) != 4 or not self.account_last_four.isascii() or not self.account_last_four.isdigit()):
+            errors["account_last_four"] = "Enter only the last four digits."
+        if errors:
+            raise ValidationError(errors)
+
+    def __str__(self):
+        return f"{self.institution_name} - {self.account_name}"

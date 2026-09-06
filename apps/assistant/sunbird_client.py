@@ -9,6 +9,8 @@ from dotenv import load_dotenv
 logger = logging.getLogger(__name__)
 
 SUNBIRD_TRANSLATE_URL = "https://api.sunbird.ai/tasks/nllb_translate"
+# Current Sunbird OpenAPI exposes POST /tasks/translate; /tasks/nllb_translate
+# is still documented but currently served as a GET-only page (HTTP 405).
 SUNBIRD_TRANSLATE_FALLBACK_URL = "https://api.sunbird.ai/tasks/translate"
 SUNBIRD_TIMEOUT_SECONDS = 10
 SOURCE_ENGLISH = "eng"
@@ -45,7 +47,8 @@ def _extract_translated_text(payload):
         return None
     output = payload.get("output")
     if isinstance(output, dict):
-        if output.get("Error") or output.get("error"):
+        error = output.get("Error") or output.get("error")
+        if error:
             return None
         text = output.get("translated_text")
         if text and str(text).strip():
@@ -57,6 +60,7 @@ def _extract_translated_text(payload):
 
 
 def translate_text(text, preferred_language, source_language=SOURCE_ENGLISH):
+    """Translate finished English text via Sunbird SALT. English or errors return text as-is."""
     if not text:
         return text
     target_language = sunbird_language_code(preferred_language)
@@ -97,13 +101,17 @@ def translate_text(text, preferred_language, source_language=SOURCE_ENGLISH):
             )
             if response.status_code == 405 and index < len(urls) - 1:
                 _SKIP_URLS.add(url)
+                logger.warning("Sunbird %s returned 405; retrying fallback endpoint.", url)
                 continue
             break
         if response is None:
-            return text
+            raise RuntimeError("No Sunbird translation endpoint was attempted.")
         response.raise_for_status()
         translated = _extract_translated_text(response.json())
-        return translated or text
+        if not translated:
+            logger.warning("Sunbird translation returned no text for target=%s.", target_language)
+            return text
+        return translated
     except Exception as exc:
         logger.warning(
             "Sunbird translation failed (%s); falling back to English.",

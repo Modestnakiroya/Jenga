@@ -5,7 +5,14 @@ from apps.assistant.translations import dashboard_labels_json
 from apps.transactions.models import EXPENSE_CATEGORIES, INCOME_CATEGORIES, TransactionCategory
 
 
-class HomeView(TemplateView):
+class TranslatedPageMixin:
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        context["dashboard_labels_json"] = dashboard_labels_json()
+        return context
+
+
+class HomeView(TranslatedPageMixin, TemplateView):
     template_name = "home.html"
 
     def get_context_data(self, **kwargs):
@@ -20,5 +27,28 @@ class HomeView(TemplateView):
         context["expense_categories"] = [
             (value, labels[value]) for value in EXPENSE_CATEGORIES
         ]
-        context["dashboard_labels_json"] = dashboard_labels_json()
         return context
+
+
+class PartnershipsView(TranslatedPageMixin, TemplateView):
+    template_name = "partnerships.html"
+
+
+class ProfilePageView(TranslatedPageMixin, TemplateView):
+    template_name = "profile.html"
+
+
+class AssistantPageView(TranslatedPageMixin, TemplateView):
+    template_name = "assistant.html"
+
+
+class PartnersView(TranslatedPageMixin, TemplateView):
+    template_name = "partners.html"
+
+
+class InsightsPageView(TemplateView):
+    template_name = "insights.html"
+
+
+class SaccoPageView(TemplateView):
+    template_name = "sacco.html"

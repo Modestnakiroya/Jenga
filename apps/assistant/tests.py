@@ -4,6 +4,7 @@ from decimal import Decimal
 from types import SimpleNamespace
 from unittest.mock import patch
 
+import requests
 from django.test import SimpleTestCase, override_settings
 from django.urls import reverse
 from django.utils import timezone
@@ -11,6 +12,8 @@ from rest_framework import status
 from rest_framework.test import APITestCase
 
 from apps.assistant.llm import LLMError, call_llm
+from apps.assistant.sunbird_client import LANGUAGE_CODES, translate_text
+from apps.assistant.translations import DASHBOARD_LABELS, ENGLISH_LABELS, SUPPORTED_LANGUAGES
 
 from apps.accounts.models import BusinessProfile, User
 from apps.assistant.engine import (
@@ -432,6 +435,13 @@ class DashboardTranslationTests(SimpleTestCase):
         self.assertNotEqual(luganda["savings_goals"], ENGLISH_LABELS["savings_goals"])
         self.assertNotEqual(luganda["goal_type_emergency_fund"], ENGLISH_LABELS["goal_type_emergency_fund"])
         self.assertNotEqual(luganda["save_goal"], ENGLISH_LABELS["save_goal"])
+        self.assertNotEqual(luganda["nav_assistant"], ENGLISH_LABELS["nav_assistant"])
+        self.assertNotEqual(luganda["your_profile"], ENGLISH_LABELS["your_profile"])
+        self.assertNotEqual(luganda["partner_accounts"], ENGLISH_LABELS["partner_accounts"])
+        for language in SUPPORTED_LANGUAGES:
+            pack = DASHBOARD_LABELS[language]
+            self.assertTrue(pack["nav_dashboard"])
+            self.assertTrue(pack["page_title_assistant"])
 
 
 class HomePageI18nTests(APITestCase):
@@ -456,9 +466,6 @@ class HomePageI18nTests(APITestCase):
         self.assertIn("Ensawo y'akatyabaga", html)
         self.assertIn("Tereka goolo", html)
 
-    def test_commitments_page_embeds_luganda_labels(self):
-        response = self.client.get("/commitments/")
-        self.assertEqual(response.status_code, 200)
-        html = response.content.decode()
-        self.assertIn('data-i18n="saving_checkins"', html)
-        self.assertIn("Okukebera okutereka", html)
+    def test_removed_commitments_page_is_not_exposed(self):
+        self.assertEqual(self.client.get("/commitments/").status_code, 404)
+

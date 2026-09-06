@@ -3,7 +3,10 @@ from django.core.exceptions import ValidationError as DjangoValidationError
 from django.db import transaction
 from rest_framework import serializers
 from rest_framework.exceptions import AuthenticationFailed
-from rest_framework_simplejwt.serializers import TokenObtainPairSerializer
+from rest_framework_simplejwt.serializers import TokenObtainPairSerializer, TokenRefreshSerializer
+from rest_framework_simplejwt.tokens import RefreshToken
+from rest_framework_simplejwt.settings import api_settings
+from rest_framework_simplejwt.utils import get_md5_hash_password
 
 from apps.accounts.models import BusinessProfile, BusinessType, Language, TrackingFrequency, User
 from apps.accounts.phones import normalize_phone_number
@@ -48,32 +51,22 @@ class PhoneTokenObtainPairSerializer(TokenObtainPairSerializer):
         }
 
 
-class ResetPasswordSerializer(serializers.Serializer):
-    phone_number = serializers.CharField()
-    password = serializers.CharField(write_only=True, style={"input_type": "password"})
-
-    def validate_phone_number(self, value):
-        try:
-            normalized = normalize_phone_number(value)
-        except DjangoValidationError as exc:
-            raise serializers.ValidationError(exc.messages) from exc
-        try:
-            self.user = User.objects.get(phone_number=normalized)
-        except User.DoesNotExist:
-            raise serializers.ValidationError("No account found for this phone number.")
-        return normalized
-
+class PasswordAwareRefreshSerializer(TokenRefreshSerializer):
     def validate(self, attrs):
-        try:
-            validate_password(attrs["password"], getattr(self, "user", None))
-        except DjangoValidationError as exc:
-            raise serializers.ValidationError({"password": exc.messages}) from exc
-        return attrs
+        token = RefreshToken(attrs["refresh"])
+        user = User.objects.filter(pk=token.get(api_settings.USER_ID_CLAIM)).first()
+        if not user or not user.is_active or token.get(api_settings.REVOKE_TOKEN_CLAIM) != get_md5_hash_password(user.password):
+            raise AuthenticationFailed("Session expired. Please log in again.")
+        return super().validate(attrs)
 
-    def save(self):
-        self.user.set_password(self.validated_data["password"])
-        self.user.save(update_fields=["password"])
-        return self.user
+
+class SaccoLoginSerializer(PhoneTokenObtainPairSerializer):
+    def validate(self, attrs):
+        data = super().validate(attrs)
+        from apps.insights.models import SaccoAccess, BankAccess
+        if not (SaccoAccess.objects.filter(user=self.user, is_active=True).exists() or BankAccess.objects.filter(user=self.user, is_active=True).exists()):
+            raise AuthenticationFailed("Institution access has not been approved. Contact your administrator.")
+        return data
 
 
 class BusinessProfileSerializer(serializers.ModelSerializer):
@@ -88,6 +81,16 @@ class BusinessProfileSerializer(serializers.ModelSerializer):
 
 
 class ProfileSerializer(serializers.ModelSerializer):
+    role = serializers.SerializerMethodField()
+
+    def get_role(self, user):
+        if user.is_superuser:
+            return "admin"
+        from apps.insights.models import SaccoAccess, BankAccess
+        if BankAccess.objects.filter(user=user, is_active=True).exists():
+            return "bank"
+        return "sacco" if SaccoAccess.objects.filter(user=user, is_active=True).exists() else "user"
+
     business_profile = BusinessProfileSerializer()
 
     class Meta:
@@ -98,10 +101,13 @@ class ProfileSerializer(serializers.ModelSerializer):
             "full_name",
             "email",
             "preferred_language",
+            "share_sacco_insights",
+            "role",
             "business_profile",
         )
         read_only_fields = ("id", "phone_number")
 
+    @transaction.atomic
     def update(self, instance, validated_data):
         business_data = validated_data.pop("business_profile", None)
         for attr, value in validated_data.items():
@@ -160,7 +166,6 @@ class RegisterSerializer(serializers.Serializer):
 
     @transaction.atomic
     def create(self, validated_data):
-        # TODO: Add OTP/SMS verification before activating newly registered accounts.
         password = validated_data.pop("password")
         business_fields = {
             "business_name": validated_data.pop("business_name"),
@@ -174,3 +179,35 @@ class RegisterSerializer(serializers.Serializer):
 
     def to_representation(self, instance):
         return ProfileSerializer(instance).data
+
+
+class PartnerAccountSerializer(serializers.ModelSerializer):
+    institution = serializers.CharField(write_only=True, required=False)
+
+    class Meta:
+        from apps.accounts.models import PartnerAccount
+        model = PartnerAccount
+        fields = ("id", "institution", "institution_name", "institution_type", "account_name", "account_last_four", "currency", "interest_rate", "interest_period", "minimum_deposit", "terms_updated_on", "terms_verified")
+        extra_kwargs = {"institution_name": {"required": False}, "institution_type": {"required": False}}
+        read_only_fields = ("id", "terms_verified")
+
+    def validate(self, attrs):
+        from apps.accounts.models import PartnerAccount
+        from apps.insights.models import Bank, Sacco
+        choice = attrs.pop("institution", None)
+        if choice:
+            try:
+                kind, key = choice.split(":")
+                model = {"bank": Bank, "sacco": Sacco}[kind]
+                institution = model.objects.get(pk=int(key))
+            except (ValueError, KeyError, Bank.DoesNotExist, Sacco.DoesNotExist):
+                raise serializers.ValidationError({"institution": "Choose an institution from the list."})
+            attrs["institution_name"], attrs["institution_type"] = institution.name, kind
+        elif not attrs.get("institution_name") or not attrs.get("institution_type"):
+            raise serializers.ValidationError({"institution": "Choose an institution."})
+        account = PartnerAccount(**attrs)
+        try:
+            account.clean()
+        except DjangoValidationError as exc:
+            raise serializers.ValidationError(exc.message_dict) from exc
+        return attrs
