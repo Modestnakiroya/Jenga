@@ -24,6 +24,7 @@ GENERAL_QUESTION must set question_type:
   Examples: what is an emergency fund, what is a good savings rate, why save for retirement.
 - personal: a question about THIS user's money that needs their logged data or profile.
   Examples: how am I doing, what should I do with my money, can you check my books.
+  When the user has records, use those records to answer instead of asking them to repeat details.
 
 Parameters to extract when present:
 - RECORD_TRANSACTION: type (income|expense), amount, category, description, date (YYYY-MM-DD)
@@ -60,7 +61,24 @@ Rules:
 - If facts include a disclaimer, include that disclaimer exactly.
 - If facts.hypothetical is true, the numbers come from an amount the user stated,
   not from their recorded income. Do not say they are based on logged transactions.
+- If facts include recommended_savings, clearly say that amount is the suggested amount to save.
+- Give a direct answer first. Do not replace a recommendation with encouragement or praise.
+
+Every reply must end with one concrete suggestion for what the user could do next.
+Never end on a bare fact or statistic with no follow-up.
+- Use soft, non-prescriptive language: "you could consider", "it might help to",
+  "you may want to" — never commands like "you should" or "you must".
+- If the facts contain a specific number that supports the suggestion (such as
+  recommended_savings, a goal shortfall, or a spending amount), use that exact number
+  in the suggestion. Never invent a number that is not in the facts.
+- If no number in the facts fits the suggestion, give the action without a number
+  rather than guessing one.
 - Keep the tone plain, practical, and helpful.
+- Use everyday words that a busy small-business owner can understand.
+- Avoid technical terms such as liquidity, allocation, deficit, volatility, or projection.
+- Prefer "money left", "save", "spend", "bills", and "goal" over formal finance language.
+- Never give definitive investment, legal, or tax advice — frame suggestions as options
+  for the user to consider, not instructions to follow.
 """
 
 PHRASE_USER = """User asked:
@@ -80,6 +98,10 @@ Rules:
 - You may mention well-known general rules of thumb, but label them as general guidance,
   not this user's numbers.
 - Keep it short and practical for informal workers and small business owners in Uganda.
+- Use simple everyday language and explain any necessary finance word immediately.
+- Write as if you are helping someone who is busy, not writing a report.
+- End with a soft, practical suggestion for what the user could try or consider,
+  using language like "you could consider" or "it might help to" rather than commands.
 """
 
 LITERACY_USER = """User question:

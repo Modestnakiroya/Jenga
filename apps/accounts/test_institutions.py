@@ -61,6 +61,11 @@ class InstitutionTests(APITestCase):
             SavingsSnapshot.objects.create(user=member,date=end,amount=120 if n<5 else 900)
         report=sacco_report(self.bank,bank=True)
         self.assertEqual(report['growth_percent'],'20')
+        earlier = sacco_report(self.bank, bank=True, month=previous.strftime('%Y-%m'))
+        self.assertIsNone(earlier['growth_percent'])
+        self.assertEqual(earlier['period_end'], previous.isoformat())
+        self.assertEqual(earlier['member_count'], report['member_count'])
+        self.assertEqual(len(report['available_months']), 24)
         self.assertNotIn('Private',str(report))
         membership=BankMembership.objects.filter(bank=self.bank).first()
         membership.bank=other
@@ -88,3 +93,44 @@ class InstitutionTests(APITestCase):
         self.assertNotIn(outsider.phone_number, str(report))
         BankMembership.objects.filter(bank=self.bank, user__is_active=True).first().delete()
         self.assertEqual(sacco_report(self.bank, bank=True)["member_count"], 1)
+
+
+    def test_reporting_month_validation_and_access(self):
+        from apps.insights.services import reporting_months
+        representative = User.objects.create_user("+256700777123", "Secure123!")
+        BankAccess.objects.create(user=representative, bank=self.bank)
+        self.client.force_authenticate(representative)
+        for month in ["2026-99", "bad", "2999-01", ""]:
+            self.assertEqual(self.client.get('/api/v1/insights/sacco/', {'month':month}).status_code, 400)
+        chosen = reporting_months()[2]['value']
+        response = self.client.get('/api/v1/insights/sacco/', {'month':chosen})
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.data['selected_month'], chosen)
+        BankAccess.objects.update(is_active=False)
+        self.assertEqual(self.client.get('/api/v1/insights/sacco/', {'month':chosen}).status_code, 403)
+
+
+    def test_two_day_current_range_and_validation(self):
+        today = timezone.localdate()
+        start = today - timedelta(days=1)
+        representative = User.objects.create_user("+256700777124", "Secure123!")
+        BankAccess.objects.create(user=representative, bank=self.bank)
+        self.client.force_authenticate(representative)
+        for n in range(5):
+            member = User.objects.create_user(f"+25670044{n:04d}", "Member123!", share_sacco_insights=True)
+            BankMembership.objects.create(user=member, bank=self.bank)
+            SavingsSnapshot.objects.filter(user=member).delete()
+            SavingsSnapshot.objects.create(user=member,date=start-timedelta(days=1),amount=100)
+            SavingsSnapshot.objects.create(user=member,date=today,amount=125)
+        response = self.client.get('/api/v1/insights/sacco/', {'start_date':start.isoformat(), 'end_date':today.isoformat()})
+        self.assertEqual(response.status_code,200)
+        self.assertEqual(response.data['growth_percent'],'25')
+        self.assertEqual(response.data['start_date'],start.isoformat())
+        self.assertEqual(response.data['end_date'],today.isoformat())
+        for query in [
+            {'start_date':today.isoformat()},
+            {'start_date':today.isoformat(),'end_date':start.isoformat()},
+            {'start_date':start.isoformat(),'end_date':(today+timedelta(days=1)).isoformat()},
+            {'start_date':'invalid','end_date':today.isoformat()},
+        ]:
+            self.assertEqual(self.client.get('/api/v1/insights/sacco/',query).status_code,400)

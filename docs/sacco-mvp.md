@@ -73,3 +73,17 @@ members who have not opted into financial reporting and is not a measure of rece
 login activity. The count appears even when there is insufficient savings history.
 Financial trends still require consent and the existing minimum group size; no
 individual member details or balances are exposed.
+
+
+## Reporting dates
+
+Institution insights accepts any inclusive start/end date range through today,
+including a single day or two days. The initial range is the current month to date.
+Savings growth compares the last known balance before the start date with the last
+known balance on or before the end date. Missing opening history is not treated as
+zero. At least five currently assigned, consenting members with both balances are
+required. Today's snapshots can still change; member counts remain current.
+
+Use `?start_date=YYYY-MM-DD&end_date=YYYY-MM-DD`. Both dates are required together;
+future dates and reversed ranges are rejected. The old `month` API parameter is
+retained for compatibility, but cannot be combined with date parameters.

@@ -72,6 +72,36 @@ class ResponsivePageContractTests(SimpleTestCase):
 
         self.assertEqual(response.status_code, 200)
 
+    def test_quick_actions_focus_on_decisions_not_recording(self):
+        response = self.client.get("/")
+        content = response.content.decode()
+
+        quick_actions = content.split('data-i18n="quick_actions"', 1)[1].split(
+            '</section>', 1
+        )[0]
+        self.assertNotIn('data-record="income"', quick_actions)
+        self.assertNotIn('data-record="expense"', quick_actions)
+        self.assertIn('id="open-afford"', quick_actions)
+        self.assertIn('id="open-allocate"', quick_actions)
+        self.assertIn(".spend-card .amount.large { font-size: 1.35rem; }", content)
+
+    def test_dashboard_keeps_assistant_out_of_finance_workspace(self):
+        response = self.client.get("/")
+        content = response.content.decode()
+
+        self.assertNotIn('id="ask-form"', content)
+        self.assertNotIn('class="assistant-chip"', content)
+
+    def test_assistant_page_has_plain_language_quick_prompts(self):
+        response = self.client.get("/assistant/")
+        content = response.content.decode()
+
+        self.assertEqual(response.status_code, 200)
+        self.assertIn('data-chat-prompt="How am I doing with my money?"', content)
+        self.assertIn('data-chat-prompt="How much can I save?"', content)
+        self.assertIn('data-chat-prompt="What did I spend this week?"', content)
+        self.assertIn('data-chat-prompt="Can I afford this?"', content)
+
 
 class AuthenticationUIRegressionTests(SimpleTestCase):
     def test_rendered_authentication_controls_work(self):

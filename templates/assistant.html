@@ -16,6 +16,9 @@
     .chat-message strong { display: block; margin-bottom: 0.35rem; font-size: 0.75rem; }
     .chat-compose { border-top: 1px solid var(--line); padding-top: 1rem; margin-top: 1rem; }
     .chat-actions { display: flex; justify-content: flex-end; margin-top: 0.75rem; }
+    .assistant-chips { display: flex; gap: 0.5rem; overflow-x: auto; margin: 0 0 0.8rem; padding: 0.15rem 0 0.4rem; scrollbar-width: thin; }
+    .assistant-chip { flex: 0 0 auto; border: 1px solid #b9d0f3; border-radius: 999px; background: white; color: var(--accent-dark); cursor: pointer; font: inherit; font-size: 0.76rem; font-weight: 500; padding: 0.55rem 0.8rem; white-space: nowrap; }
+    .assistant-chip:hover { border-color: var(--accent); background: var(--blue-soft); }
   </style>
 </head>
 <body>
@@ -23,11 +26,16 @@
   <main id="main-content" tabindex="-1">
     {% include "partials/navbar.html" %}
     <section class="chat-shell">
-      <div class="card-head"><h1>Ask Jenga</h1><a class="primary-action" href="/insights/">AI insights</a></div>
       <p class="lead">Your AI assistant for business money. Ask about income, spending, savings or your next decision.</p>
       <div class="card">
         <div class="chat-log" id="chat-log" role="log" aria-label="Conversation" aria-live="polite">
           <p class="chat-message"><strong>Jenga</strong><span data-i18n="assistant_greeting">What would you like help with today?</span></p>
+        </div>
+        <div class="assistant-chips" aria-label="Quick assistant questions">
+          <button type="button" class="assistant-chip" data-chat-prompt="How am I doing with my money?">Show insights</button>
+          <button type="button" class="assistant-chip" data-chat-prompt="How much can I save?">Find savings</button>
+          <button type="button" class="assistant-chip" data-chat-prompt="What did I spend this week?">Track spending</button>
+          <button type="button" class="assistant-chip" data-chat-prompt="Can I afford this?">Check a purchase</button>
         </div>
         <form class="chat-compose" id="chat-form">
           <label for="chat-input" data-i18n="your_message">Your message</label>
@@ -70,13 +78,22 @@
         });
         const data = await response.json().catch(() => ({}));
         if (!response.ok) {
-          chatStatus.textContent = response.status === 401 ? t('assistant_login') : t('assistant_error');
+          chatStatus.textContent = response.status === 401
+            ? t('assistant_login')
+            : (data.detail || t('assistant_error'));
           return;
         }
         appendMessage(t('you'), text); appendMessage('Jenga', data.reply || t('assistant_no_reply'));
         input.value = ''; chatStatus.textContent = '';
       } catch { chatStatus.textContent = t('assistant_connection'); }
       finally { button.disabled = false; input.focus(); }
+    });
+    document.querySelectorAll('[data-chat-prompt]').forEach(button => {
+      button.addEventListener('click', () => {
+        const input = document.getElementById('chat-input');
+        input.value = button.dataset.chatPrompt;
+        input.focus();
+      });
     });
     loadPreferredLanguage();
   </script>
