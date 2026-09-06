@@ -28,11 +28,42 @@ from apps.assistant.prompts import (
 from apps.assistant.serializers import AskSerializer
 
 
+LANGUAGE_NAMES = {
+    "english": "English",
+    "luganda": "Luganda",
+    "runyankole": "Runyankole",
+    "acholi": "Acholi",
+    "ateso": "Ateso",
+}
+
+
 def _render(template, **values):
     rendered = template
     for key, value in values.items():
         rendered = rendered.replace("{{" + key + "}}", value)
     return rendered
+
+
+def _reply_language_rules(preferred_language):
+    language = LANGUAGE_NAMES.get((preferred_language or "").strip().lower(), "English")
+    return f"""
+
+Response language and format:
+- Write the entire reply in {language} only. Do not mix in English.
+- Keep names, currency codes, and numeric values exactly as supplied when necessary.
+- Use plain text only: no Markdown, asterisks, headings, or bullet symbols.
+- Put the direct answer in the first short paragraph. Add a second short paragraph only
+  when a practical next step is useful.
+- End with a natural {language} translation of: Do you have another question?
+"""
+
+
+def _clean_reply(text):
+    """Keep model formatting from leaking into the plain-text chat panel."""
+    text = (text or "").replace("*", "")
+    text = re.sub(r"[ \t]+\n", "\n", text)
+    text = re.sub(r"\n{3,}", "\n\n", text)
+    return text.strip()
 
 
 def parse_classification(raw_text):
@@ -104,18 +135,18 @@ class AskView(APIView):
         try:
             if result.get("use_literacy_llm"):
                 reply = call_llm(
-                    LITERACY_SYSTEM,
+                    LITERACY_SYSTEM + _reply_language_rules(request.user.preferred_language),
                     _render(LITERACY_USER, message=message),
                 ).strip()
             else:
                 reply = call_llm(
-                    PHRASE_SYSTEM,
+                    PHRASE_SYSTEM + _reply_language_rules(request.user.preferred_language),
                     _render(PHRASE_USER, message=message, facts=json.dumps(facts)),
                 ).strip()
         except LLMError as exc:
             return Response({"detail": str(exc)}, status=status.HTTP_503_SERVICE_UNAVAILABLE)
 
-        if facts.get("hypothetical"):
+        if facts.get("hypothetical") and request.user.preferred_language == "english":
             disclaimer = facts.get("disclaimer") or HYPOTHETICAL_ALLOCATION_DISCLAIMER
             if disclaimer.lower() not in reply.lower():
                 reply = disclaimer + " " + reply
@@ -123,7 +154,7 @@ class AskView(APIView):
         return Response(
             {
                 "intent": parsed["intent"],
-                "reply": localize_reply(reply, request.user.preferred_language),
+                "reply": _clean_reply(reply),
                 "facts": facts,
             }
         )

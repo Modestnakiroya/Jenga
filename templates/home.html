@@ -177,6 +177,17 @@
     .amount { margin: 0; font-size: 1.15rem; font-weight: 700; }
     .amount.large { font-size: 1.85rem; }
     .hint { margin: 0.45rem 0 0; color: var(--muted); font-size: 0.85rem; }
+    .assistant-reply {
+      margin-top: 0.9rem;
+      padding: 0.9rem 1rem;
+      border: 1px solid var(--line);
+      border-radius: 10px;
+      background: #f8fafc;
+      color: var(--ink);
+      font-size: 0.95rem;
+      line-height: 1.55;
+      white-space: pre-line;
+    }
     .actions {
       display: grid;
       grid-template-columns: 1fr 1fr;
@@ -527,7 +538,18 @@
           </div>
         </section>
 
-
+        <section class="card">
+          <div class="card-head">
+            <h2 data-i18n="ask_jenga">Ask Jenga</h2>
+          </div>
+          <form id="ask-form">
+            <label for="ask-input" data-i18n="ask_prompt">What do you want to know?</label>
+            <input id="ask-input" required placeholder="e.g. Can I afford 20000?">
+            <button type="submit" data-i18n="ask">Ask</button>
+          </form>
+          <p id="ask-reply" class="assistant-reply hidden" aria-live="polite"></p>
+          <div id="ask-status" class="msg"></div>
+        </section>
 
         <section class="card">
           <div class="card-head">
