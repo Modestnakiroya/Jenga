@@ -435,6 +435,13 @@ class DashboardTranslationTests(SimpleTestCase):
         self.assertNotEqual(luganda["savings_goals"], ENGLISH_LABELS["savings_goals"])
         self.assertNotEqual(luganda["goal_type_emergency_fund"], ENGLISH_LABELS["goal_type_emergency_fund"])
         self.assertNotEqual(luganda["save_goal"], ENGLISH_LABELS["save_goal"])
+        self.assertNotEqual(luganda["nav_assistant"], ENGLISH_LABELS["nav_assistant"])
+        self.assertNotEqual(luganda["your_profile"], ENGLISH_LABELS["your_profile"])
+        self.assertNotEqual(luganda["partner_accounts"], ENGLISH_LABELS["partner_accounts"])
+        for language in SUPPORTED_LANGUAGES:
+            pack = DASHBOARD_LABELS[language]
+            self.assertTrue(pack["nav_dashboard"])
+            self.assertTrue(pack["page_title_assistant"])
 
 
 class HomePageI18nTests(APITestCase):

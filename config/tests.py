@@ -92,7 +92,11 @@ class AuthenticationUIRegressionTests(SimpleTestCase):
         html = self.client.get("/").content.decode()
         parser = Elements()
         parser.feed(html)
-        script = re.findall(r"<script[^>]*>(.*?)</script>", html, re.S)[0]
+        script = next(
+            block
+            for block in re.findall(r"<script[^>]*>(.*?)</script>", html, re.S)
+            if "function showDashboard" in block
+        )
         result = subprocess.run(
             ["node", str(Path(__file__).with_name("auth_ui_check.cjs"))],
             input=json.dumps({"script": script, "elements": parser.elements}),
@@ -148,7 +152,8 @@ class WorkspacePageTests(SimpleTestCase):
         self.assertContains(public, "Partner with Jenga")
         self.assertNotContains(public, 'id="logout-button"')
         private = self.client.get("/partners/")
-        self.assertContains(private, 'href="/partners/">Partners')
+        self.assertContains(private, 'href="/partners/"')
+        self.assertContains(private, 'data-i18n="nav_partners"')
         self.assertContains(private, 'id="partner-accounts"')
         self.assertContains(private, 'id="logout-button"')
         self.assertEqual(self.client.get("/signup/").status_code, 200)
