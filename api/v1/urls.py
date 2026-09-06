@@ -9,4 +9,5 @@ urlpatterns = [
     path("", include("apps.planning.urls")),
     path("", include("apps.commitments.urls")),
     path("", include("apps.assistant.urls")),
+    path("", include("apps.sms_gateway.urls")),
 ]
