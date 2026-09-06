@@ -42,6 +42,7 @@ INSTALLED_APPS = [
     "apps.planning.apps.PlanningConfig",
     "apps.commitments.apps.CommitmentsConfig",
     "apps.assistant.apps.AssistantConfig",
+    "apps.sms_gateway.apps.SmsGatewayConfig",
 ]
 
 MIDDLEWARE = [
@@ -127,6 +128,9 @@ CORS_ALLOW_ALL_ORIGINS = env_bool("CORS_ALLOW_ALL_ORIGINS", default=False)
 
 GEMINI_API_KEY = os.getenv("GEMINI_API_KEY", "")
 GEMINI_MODEL = os.getenv("GEMINI_MODEL", "gemini-3.6-flash")
+
+AT_USERNAME = os.getenv("AT_USERNAME", "")
+AT_API_KEY = os.getenv("AT_API_KEY", "")
 
 SUNBIRD_API_TOKEN = os.getenv("SUNBIRD_API_TOKEN", "")
 SUNBIRD_TRANSLATE_URL = os.getenv(
