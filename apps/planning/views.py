@@ -29,6 +29,18 @@ class AvailableMoneyView(APIView):
         return Response(available_money_payload(calculate_safe_to_spend(request.user)))
 
 
+class SavingsAdviceView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request):
+        from apps.planning.savings_advice import savings_advice
+        from rest_framework.exceptions import ValidationError
+        period = request.query_params.get('period', 'weekly')
+        if period not in ('daily', 'weekly', 'monthly'):
+            raise ValidationError({'period': 'Choose daily, weekly or monthly.'})
+        return Response(savings_advice(request.user, period))
+
+
 class CanIAffordView(APIView):
     permission_classes = [IsAuthenticated]
 

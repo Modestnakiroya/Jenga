@@ -60,10 +60,29 @@ def personal_insights(user, amount, currency, months):
             "suggestions": suggestions}
 
 
-def sacco_report(sacco, bank=False):
-    # Only completed calendar months; no user-supplied filtering or live drill-down.
+def reporting_months():
+    """Use completed calendar months so partial months are not compared with full ones."""
     end = timezone.localdate().replace(day=1) - timedelta(days=1)
+    months = []
+    for _ in range(24):
+        months.append({"value": end.strftime("%Y-%m"), "label": end.strftime("%B %Y")})
+        end = end.replace(day=1) - timedelta(days=1)
+    return months
+
+
+def sacco_report(sacco, bank=False, month=None, start_date=None, end_date=None):
+    # Date selection changes the snapshot cutoff, never the institution membership scope.
+    end = timezone.localdate().replace(day=1) - timedelta(days=1)
+    if month:
+        from datetime import date
+        year, number = map(int, month.split("-"))
+        next_month = date(year + (number == 12), 1 if number == 12 else number + 1, 1)
+        end = next_month - timedelta(days=1)
     previous_end = end.replace(day=1) - timedelta(days=1)
+    if start_date is not None:
+        # Carry the last known balance forward; missing pre-range history is not zero.
+        previous_end = start_date - timedelta(days=1)
+        end = end_date
     scope = {"bank_membership__bank": sacco} if bank else {"sacco_membership__sacco": sacco}
     member_count = User.objects.filter(**scope, is_active=True).count()
     users = list(User.objects.filter(**scope, share_sacco_insights=True, is_active=True).select_related("business_profile"))
@@ -75,18 +94,21 @@ def sacco_report(sacco, bank=False):
             previous[row.user_id] = row.amount
     paired = [u for u in users if u.pk in previous and u.pk in current]
     result = {"sacco": sacco.name, "period_end": end.isoformat(), "previous_period_end": previous_end.isoformat(),
+              "selected_month": end.strftime("%Y-%m"), "available_months": reporting_months(),
+              "start_date": (start_date or (previous_end + timedelta(days=1))).isoformat(),
+              "end_date": end.isoformat(), "today": timezone.localdate().isoformat(),
               "member_count": member_count,
               "member_count_description": "Enabled Jenga accounts assigned to your institution. Includes members who have not opted into financial insights; does not measure recent logins.",
               "minimum_group_size": MIN_COHORT, "growth_percent": None, "sectors": [],
-              "method": "Monthly change in recorded goal balances for the same opted-in members. Not deposit flows or verified bank balances. Groups below five are withheld; percentages rounded to whole numbers. No personal records or exact balances are returned."}
+              "method": "Change in recorded goal balances over the selected period for the same opted-in members. Not deposit flows or verified bank balances. Groups below five are withheld; percentages rounded to whole numbers. No personal records or exact balances are returned."}
     if len(paired) < MIN_COHORT:
-        result["status"] = "Not enough opted-in members with history across both month ends. Collection starts when members opt in."
+        result["status"] = "Not enough opted-in members with history before and through this period. Collection starts when members opt in."
         return result
     old = sum((previous[u.pk] for u in paired), Decimal(0))
     new = sum((current[u.pk] for u in paired), Decimal(0))
     if old > 0:
         result["growth_percent"] = str(((new - old) / old * 100).quantize(Decimal("1"), rounding=ROUND_HALF_UP))
-    result["status"] = "Growth unavailable when the earlier balance is zero." if old == 0 else "Monthly report available."
+    result["status"] = "Growth unavailable when the earlier balance is zero." if old == 0 else "Report available."
     grouped = {}
     for user in paired:
         profile = getattr(user, "business_profile", None)

@@ -32,6 +32,7 @@ from apps.assistant.prompts import (
     NO_TRANSACTIONS_REPLY,
     PERSONAL_GENERAL_REPLY,
 )
+from apps.assistant.prompts import PHRASE_SYSTEM, LITERACY_SYSTEM
 from apps.goals.models import Goal
 from apps.planning.decision_engine import assess_affordability, recommend_allocation
 from apps.planning.models import UpcomingExpense
@@ -101,6 +102,10 @@ class AssistantAskTests(APITestCase):
             amount=Decimal("10000.00"),
             expected_date=self.today + timedelta(days=7),
         )
+
+    def test_response_prompts_require_plain_language(self):
+        self.assertIn("Avoid technical terms", PHRASE_SYSTEM)
+        self.assertIn("simple everyday language", LITERACY_SYSTEM)
 
     @patch("apps.assistant.views.call_llm")
     def test_record_transaction_uses_serializer_not_llm_numbers(self, mock_llm):
@@ -312,13 +317,19 @@ class AssistantAskTests(APITestCase):
         self.assertEqual(mock_llm.call_count, 1)
 
     @patch("apps.assistant.views.call_llm")
-    def test_personal_general_question_uses_template(self, mock_llm):
+    def test_personal_general_question_uses_logged_summary(self, mock_llm):
         self.authenticate()
-        mock_llm.return_value = classify(INTENT_GENERAL_QUESTION, question_type="personal")
+        self.seed_money()
+        mock_llm.side_effect = [
+            classify(INTENT_GENERAL_QUESTION, question_type="personal"),
+            "You have income, expenses, and an estimated profit for this week.",
+        ]
         response = self.ask("How am I doing with my money?")
         self.assertEqual(response.data["intent"], INTENT_GENERAL_QUESTION)
-        self.assertEqual(response.data["reply"], PERSONAL_GENERAL_REPLY)
-        self.assertEqual(mock_llm.call_count, 1)
+        self.assertEqual(response.data["facts"]["total_income"], "100000.00")
+        self.assertEqual(response.data["facts"]["total_expenses"], "20000.00")
+        self.assertIn("income", response.data["reply"])
+        self.assertEqual(mock_llm.call_count, 2)
 
     @patch("apps.assistant.views.call_llm")
     def test_low_confidence_falls_back_without_second_llm_or_writes(self, mock_llm):

@@ -1,5 +1,6 @@
 from datetime import timedelta
 from decimal import Decimal
+from unittest.mock import patch
 
 from django.test import TestCase
 from django.urls import reverse
@@ -25,6 +26,7 @@ from apps.planning.decision_engine import (
 )
 from apps.planning.models import UpcomingExpense
 from apps.transactions.models import Transaction
+from apps.planning.savings_advice import savings_advice
 
 
 class DecisionEngineTests(TestCase):
@@ -69,6 +71,18 @@ class DecisionEngineTests(TestCase):
     def test_constants(self):
         self.assertEqual(EMERGENCY_RESERVE_PERCENTAGE, Decimal("0.15"))
         self.assertEqual(YELLOW_OVERAGE_PERCENTAGE, Decimal("0.20"))
+
+    @patch("apps.planning.savings_advice.call_llm")
+    def test_savings_advice_accepts_fenced_json_from_ai(self, mock_call_llm):
+        self.add_transaction("income", "100000.00", days_ago=2)
+        self.add_transaction("expense", "20000.00", days_ago=1)
+        mock_call_llm.return_value = '```json\n{"amount":"25000.00","explanation":"Keep a reserve and save toward your active priorities."}\n```'
+
+        result = savings_advice(self.user, "weekly")
+
+        self.assertEqual(result["status"], "ai")
+        self.assertEqual(result["amount"], "25000.00")
+        self.assertIn("save", result["explanation"].lower())
 
     def test_safe_to_spend_breakdown_and_green(self):
         safe = self.seed_known_balances()

@@ -8,7 +8,7 @@ from rest_framework.views import APIView
 
 from apps.assistant.llm import LLMError, call_llm
 from .models import SaccoAccess, BankAccess
-from .services import personal_insights, sacco_report
+from .services import personal_insights, sacco_report, reporting_months
 
 
 class InsightsInput(serializers.Serializer):
@@ -49,10 +49,36 @@ class SaccoInsightsView(APIView):
     permission_classes = [HasSaccoAccess]
 
     def get(self, request):
+        # Restrict periods to whole months while retaining the same privacy threshold.
+        month = request.query_params.get("month")
+        if month is not None and month not in {item["value"] for item in reporting_months()}:
+            raise serializers.ValidationError({"month": "Choose one of the last 24 completed months (YYYY-MM)."})
+        from django.utils import timezone
+        from datetime import date
+        class DateRange(serializers.Serializer):
+            start_date = serializers.DateField(required=False)
+            end_date = serializers.DateField(required=False)
+
+            def validate(self, values):
+                start, end = values.get("start_date"), values.get("end_date")
+                if (start is None) != (end is None):
+                    raise serializers.ValidationError("Provide both start date and end date.")
+                if start and (start > end or end > timezone.localdate() or start <= date.min):
+                    raise serializers.ValidationError("Choose a start date on or before the end date, with neither date in the future.")
+                return values
+
+        dates = DateRange(data=request.query_params)
+        dates.is_valid(raise_exception=True)
+        range_values = dates.validated_data
+        if month and range_values:
+            raise serializers.ValidationError("Choose either a date range or a month, not both.")
+        if not month and not range_values:
+            today = timezone.localdate()
+            range_values = {"start_date": today.replace(day=1), "end_date": today}
         grant = SaccoAccess.objects.select_related("sacco").filter(user=request.user, is_active=True).first()
         if grant is None:
             bank_grant = BankAccess.objects.select_related("bank").filter(user=request.user, is_active=True).first()
             if bank_grant:
-                return Response(sacco_report(bank_grant.bank, bank=True))
+                return Response(sacco_report(bank_grant.bank, bank=True, month=month, **range_values))
             raise PermissionDenied("SACCO access is no longer active.")
-        return Response(sacco_report(grant.sacco))
+        return Response(sacco_report(grant.sacco, month=month, **range_values))
