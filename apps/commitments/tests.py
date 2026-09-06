@@ -1,16 +1,19 @@
 from datetime import timedelta
 from decimal import Decimal
+from unittest.mock import patch
 
+from django.core.management import call_command
 from django.test import TestCase
 from django.urls import reverse
 from django.utils import timezone
 from rest_framework import status
 from rest_framework.test import APITestCase
 
-from apps.accounts.models import User
+from apps.accounts.models import Language, User
 from apps.commitments.models import Commitment, CommitmentStatus
 from apps.commitments.services import get_due_commitments
 from apps.goals.models import Goal
+from apps.sms_gateway.commands import format_amount, sms_label
 
 
 class DueCommitmentsServiceTests(TestCase):
@@ -219,3 +222,94 @@ class CommitmentAPITests(APITestCase):
         response = self.create_commitment(goal=other_goal.id)
         self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
         self.assertIn("goal", response.data)
+
+
+class SendCommitmentRemindersTests(TestCase):
+    def setUp(self):
+        self.user = User.objects.create_user(
+            phone_number="+256700666010",
+            password="SecurePass123!",
+            full_name="Due Saver",
+        )
+        self.other = User.objects.create_user(
+            phone_number="+256700666011",
+            password="SecurePass123!",
+            full_name="Other Saver",
+        )
+        self.today = timezone.localdate()
+        self.now = timezone.now()
+
+    def make_commitment(self, user=None, **overrides):
+        payload = {
+            "user": user or self.user,
+            "target_amount": Decimal("100000.00"),
+            "saved_amount": Decimal("0.00"),
+            "period_start": self.today - timedelta(days=7),
+            "period_end": self.today - timedelta(days=1),
+            "status": CommitmentStatus.PENDING,
+        }
+        payload.update(overrides)
+        return Commitment.objects.create(**payload)
+
+    @patch("apps.commitments.management.commands.send_commitment_reminders.send_sms")
+    def test_sends_only_to_genuinely_due_users(self, mock_send):
+        mock_send.return_value = {"SMSMessageData": {"Recipients": []}}
+        due = self.make_commitment()
+        self.make_commitment(period_end=self.today + timedelta(days=2))
+        self.make_commitment(status=CommitmentStatus.FULFILLED)
+        self.make_commitment(user=self.other, period_end=self.today + timedelta(days=3))
+
+        call_command("send_commitment_reminders")
+
+        mock_send.assert_called_once_with(
+            self.user.phone_number,
+            sms_label("english", "sms_commitment_reminder", amount=format_amount(due.target_amount)),
+        )
+        due.refresh_from_db()
+        self.assertIsNotNone(due.last_reminded_at)
+
+    @patch("apps.commitments.management.commands.send_commitment_reminders.send_sms")
+    def test_skips_users_reminded_within_24_hours(self, mock_send):
+        mock_send.return_value = {"SMSMessageData": {"Recipients": []}}
+        recent = self.now - timedelta(hours=2)
+        commitment = self.make_commitment(last_reminded_at=recent)
+
+        call_command("send_commitment_reminders")
+
+        mock_send.assert_not_called()
+        commitment.refresh_from_db()
+        self.assertEqual(commitment.last_reminded_at, recent)
+
+    @patch("apps.commitments.management.commands.send_commitment_reminders.send_sms")
+    def test_resends_when_last_reminder_is_older_than_24_hours(self, mock_send):
+        mock_send.return_value = {"SMSMessageData": {"Recipients": []}}
+        old_stamp = self.now - timedelta(hours=25)
+        commitment = self.make_commitment(last_reminded_at=old_stamp)
+
+        call_command("send_commitment_reminders")
+
+        mock_send.assert_called_once()
+        commitment.refresh_from_db()
+        self.assertGreater(commitment.last_reminded_at, old_stamp)
+
+    @patch("apps.commitments.management.commands.send_commitment_reminders.send_sms")
+    def test_reminder_uses_preferred_language(self, mock_send):
+        mock_send.return_value = {"SMSMessageData": {"Recipients": []}}
+        self.user.preferred_language = Language.LUGANDA
+        self.user.save(update_fields=["preferred_language"])
+        commitment = self.make_commitment()
+
+        call_command("send_commitment_reminders")
+
+        mock_send.assert_called_once_with(
+            self.user.phone_number,
+            sms_label(
+                "luganda",
+                "sms_commitment_reminder",
+                amount=format_amount(commitment.target_amount),
+            ),
+        )
+        self.assertNotEqual(
+            mock_send.call_args.args[1],
+            sms_label("english", "sms_commitment_reminder", amount=format_amount(commitment.target_amount)),
+        )

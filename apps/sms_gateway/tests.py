@@ -1,3 +1,4 @@
+from datetime import timedelta
 from decimal import Decimal
 from unittest.mock import patch
 
@@ -7,10 +8,16 @@ from django.utils import timezone
 from rest_framework import status
 from rest_framework.test import APITestCase
 
-from apps.accounts.models import BusinessProfile, Language, User
+from apps.accounts.models import BusinessProfile, BusinessType, Language, TrackingFrequency, User
+from apps.commitments.models import Commitment, CommitmentStatus
+from apps.goals.models import Goal, GoalStatus
 from apps.planning.decision_engine import assess_affordability
+from apps.retirement.models import RetirementProfile
+from apps.retirement.projection import calculate_retirement_projection
 from apps.sms_gateway.client import send_sms
 from apps.sms_gateway.commands import handle_incoming_sms, parse_command, sms_label
+from apps.sms_gateway.models import RegistrationSession, RegistrationStep
+from apps.sms_gateway.registration import business_type_options
 from apps.transactions.models import Transaction
 from apps.transactions.serializers import TransactionSerializer
 from apps.transactions.services import calculate_financial_summary
@@ -51,6 +58,17 @@ class CommandParserTests(SimpleTestCase):
             ("can_afford", {"amount": "300000"}),
         )
 
+    def test_goal_and_retire_aliases(self):
+        self.assertEqual(parse_command("GOAL"), ("goal", {}))
+        self.assertEqual(parse_command("goal"), ("goal", {}))
+        self.assertEqual(parse_command("RETIRE"), ("retire", {}))
+        self.assertEqual(parse_command("retirement"), ("retire", {}))
+
+    def test_confirm_requires_amount(self):
+        self.assertEqual(parse_command("CONFIRM 100000"), ("confirm", {"amount": "100000"}))
+        self.assertEqual(parse_command("confirm 100000"), ("confirm", {"amount": "100000"}))
+        self.assertEqual(parse_command("CONFIRM"), ("help", {}))
+
     def test_unrecognized_command_returns_help(self):
         self.assertEqual(parse_command("HELLO"), ("help", {}))
         self.assertEqual(parse_command("INCOME 50000"), ("help", {}))
@@ -87,6 +105,12 @@ class IncomingSMSCommandTests(TestCase):
         reply = handle_incoming_sms(self.user.phone_number, "WHAT")
         self.assertEqual(reply, sms_label("english", "sms_help"))
         self.assertEqual(Transaction.objects.count(), 0)
+
+    def test_register_from_existing_user_does_not_start_session(self):
+        reply = handle_incoming_sms(self.user.phone_number, "REGISTER")
+        self.assertEqual(reply, sms_label("english", "sms_already_registered"))
+        self.assertFalse(RegistrationSession.objects.filter(phone_number=self.user.phone_number).exists())
+        self.assertEqual(User.objects.filter(phone_number=self.user.phone_number).count(), 1)
 
     def test_income_creates_transaction_like_the_api_serializer(self):
         reply = handle_incoming_sms(self.user.phone_number, "INCOME 50000 SALES")
@@ -175,6 +199,269 @@ class IncomingSMSCommandTests(TestCase):
         self.assertEqual(reply, expected)
         self.assertNotEqual(expected, sms_label("english", "sms_income_ok", amount="50000.00", category="SALES"))
         self.assertEqual(Transaction.objects.get().category, "sales")
+
+    def test_goal_reports_most_recent_active_goal(self):
+        Goal.objects.create(
+            user=self.user,
+            name="Older stove",
+            goal_type="personal",
+            target_amount=Decimal("100000.00"),
+            current_saved_amount=Decimal("20000.00"),
+        )
+        Goal.objects.create(
+            user=self.user,
+            name="New fridge",
+            goal_type="personal",
+            target_amount=Decimal("200000.00"),
+            current_saved_amount=Decimal("90000.00"),
+        )
+        Goal.objects.create(
+            user=self.user,
+            name="Finished cart",
+            goal_type="business_growth",
+            target_amount=Decimal("50000.00"),
+            current_saved_amount=Decimal("50000.00"),
+            status=GoalStatus.COMPLETED,
+        )
+        reply = handle_incoming_sms(self.user.phone_number, "GOAL")
+        self.assertEqual(
+            reply,
+            sms_label(
+                "english",
+                "sms_goal_ok",
+                name="New fridge",
+                percent="45",
+                saved="90000.00",
+                target="200000.00",
+            ),
+        )
+
+    def test_goal_without_active_goal_suggests_app(self):
+        Goal.objects.create(
+            user=self.user,
+            name="Finished cart",
+            goal_type="personal",
+            target_amount=Decimal("50000.00"),
+            current_saved_amount=Decimal("50000.00"),
+            status=GoalStatus.COMPLETED,
+        )
+        reply = handle_incoming_sms(self.user.phone_number, "GOAL")
+        self.assertEqual(reply, sms_label("english", "sms_goal_none"))
+
+    def test_retire_on_track_uses_projection_service(self):
+        profile = RetirementProfile.objects.create(
+            user=self.user,
+            current_age=40,
+            desired_retirement_age=41,
+            current_savings=Decimal("0.00"),
+            existing_pension_balance=Decimal("0.00"),
+            desired_retirement_fund=Decimal("120000.00"),
+            current_monthly_contribution=Decimal("10000.00"),
+        )
+        expected = calculate_retirement_projection(profile)
+        self.assertTrue(expected["on_track"])
+        reply = handle_incoming_sms(self.user.phone_number, "RETIRE")
+        self.assertEqual(
+            reply,
+            sms_label(
+                "english",
+                "sms_retire_on_track",
+                amount=f"{expected['required_monthly_contribution']:.2f}",
+            ),
+        )
+        self.assertIn("estimate", reply.lower())
+
+    def test_retirement_alias_needs_attention(self):
+        profile = RetirementProfile.objects.create(
+            user=self.user,
+            current_age=30,
+            desired_retirement_age=32,
+            current_savings=Decimal("10000.00"),
+            existing_pension_balance=Decimal("5000.00"),
+            desired_retirement_fund=Decimal("50000.00"),
+            current_monthly_contribution=Decimal("1000.00"),
+        )
+        expected = calculate_retirement_projection(profile)
+        self.assertFalse(expected["on_track"])
+        reply = handle_incoming_sms(self.user.phone_number, "RETIREMENT")
+        self.assertEqual(
+            reply,
+            sms_label(
+                "english",
+                "sms_retire_needs_attention",
+                amount=f"{expected['required_monthly_contribution']:.2f}",
+            ),
+        )
+
+    def test_retire_without_profile_suggests_app(self):
+        reply = handle_incoming_sms(self.user.phone_number, "RETIRE")
+        self.assertEqual(reply, sms_label("english", "sms_retire_none"))
+
+    def test_confirm_marks_fulfilled_like_apply_confirmation(self):
+        commitment = Commitment.objects.create(
+            user=self.user,
+            target_amount=Decimal("100000.00"),
+            period_start=self.today - timedelta(days=7),
+            period_end=self.today - timedelta(days=1),
+        )
+        reply = handle_incoming_sms(self.user.phone_number, "CONFIRM 100000")
+        commitment.refresh_from_db()
+        self.assertEqual(commitment.status, CommitmentStatus.FULFILLED)
+        self.assertEqual(commitment.saved_amount, Decimal("100000.00"))
+        self.assertEqual(
+            reply,
+            sms_label(
+                "english",
+                "sms_confirm_ok",
+                amount="100000.00",
+                result="Fulfilled",
+                status=CommitmentStatus.FULFILLED,
+            ),
+        )
+
+    def test_confirm_marks_partial_on_oldest_pending(self):
+        older = Commitment.objects.create(
+            user=self.user,
+            target_amount=Decimal("100000.00"),
+            period_start=self.today - timedelta(days=14),
+            period_end=self.today - timedelta(days=8),
+        )
+        newer = Commitment.objects.create(
+            user=self.user,
+            target_amount=Decimal("50000.00"),
+            period_start=self.today - timedelta(days=7),
+            period_end=self.today - timedelta(days=1),
+        )
+        reply = handle_incoming_sms(self.user.phone_number, "CONFIRM 40000")
+        older.refresh_from_db()
+        newer.refresh_from_db()
+        self.assertEqual(older.status, CommitmentStatus.PARTIAL)
+        self.assertEqual(older.saved_amount, Decimal("40000.00"))
+        self.assertEqual(newer.status, CommitmentStatus.PENDING)
+        self.assertEqual(newer.saved_amount, Decimal("0.00"))
+        self.assertEqual(
+            reply,
+            sms_label(
+                "english",
+                "sms_confirm_ok",
+                amount="40000.00",
+                result="Partial",
+                status=CommitmentStatus.PARTIAL,
+            ),
+        )
+
+    def test_confirm_without_pending_commitment(self):
+        reply = handle_incoming_sms(self.user.phone_number, "CONFIRM 100000")
+        self.assertEqual(reply, sms_label("english", "sms_confirm_none"))
+        self.assertEqual(Commitment.objects.count(), 0)
+
+
+class SMSRegistrationFlowTests(TestCase):
+    phone = "+256700999001"
+
+    def test_full_registration_creates_user_and_unlocks_commands(self):
+        welcome = handle_incoming_sms(self.phone, "register")
+        self.assertEqual(welcome, sms_label("english", "sms_register_welcome"))
+        session = RegistrationSession.objects.get(phone_number=self.phone)
+        self.assertEqual(session.current_step, RegistrationStep.AWAITING_NAME)
+
+        asked_business = handle_incoming_sms(self.phone, "Amina Nalwoga")
+        self.assertEqual(
+            asked_business,
+            sms_label("english", "sms_register_ask_business", name="Amina Nalwoga"),
+        )
+        session.refresh_from_db()
+        self.assertEqual(session.current_step, RegistrationStep.AWAITING_BUSINESS_NAME)
+        self.assertEqual(session.collected_full_name, "Amina Nalwoga")
+
+        asked_type = handle_incoming_sms(self.phone, "Amina Stall")
+        self.assertEqual(
+            asked_type,
+            sms_label("english", "sms_register_ask_type", options=business_type_options()),
+        )
+        session.refresh_from_db()
+        self.assertEqual(session.current_step, RegistrationStep.AWAITING_BUSINESS_TYPE)
+        self.assertEqual(session.collected_business_name, "Amina Stall")
+
+        asked_frequency = handle_incoming_sms(self.phone, "8")
+        self.assertEqual(asked_frequency, sms_label("english", "sms_register_ask_frequency"))
+        session.refresh_from_db()
+        self.assertEqual(session.current_step, RegistrationStep.AWAITING_TRACKING_FREQUENCY)
+        self.assertEqual(session.collected_business_type, BusinessType.TRADER)
+
+        done = handle_incoming_sms(self.phone, "2")
+        self.assertEqual(done, sms_label("english", "sms_register_done", name="Amina Nalwoga"))
+        session.refresh_from_db()
+        self.assertEqual(session.current_step, RegistrationStep.COMPLETE)
+
+        user = User.objects.get(phone_number=self.phone)
+        self.assertEqual(user.full_name, "Amina Nalwoga")
+        self.assertEqual(user.preferred_language, Language.ENGLISH)
+        self.assertFalse(user.has_usable_password())
+        profile = user.business_profile
+        self.assertEqual(profile.business_name, "Amina Stall")
+        self.assertEqual(profile.business_type, BusinessType.TRADER)
+        self.assertEqual(profile.tracking_frequency, TrackingFrequency.WEEKLY)
+
+        income = handle_incoming_sms(self.phone, "INCOME 50000 SALES")
+        self.assertEqual(
+            income,
+            sms_label("english", "sms_income_ok", amount="50000.00", category="SALES"),
+        )
+        self.assertEqual(Transaction.objects.filter(user=user).count(), 1)
+        balance = handle_incoming_sms(self.phone, "BAL")
+        self.assertIn("50000.00", balance)
+
+    def test_invalid_business_type_is_reasked(self):
+        handle_incoming_sms(self.phone, "REGISTER")
+        handle_incoming_sms(self.phone, "Amina Nalwoga")
+        handle_incoming_sms(self.phone, "Amina Stall")
+        reply = handle_incoming_sms(self.phone, "99")
+        self.assertEqual(
+            reply,
+            sms_label("english", "sms_register_invalid_type", options=business_type_options()),
+        )
+        session = RegistrationSession.objects.get(phone_number=self.phone)
+        self.assertEqual(session.current_step, RegistrationStep.AWAITING_BUSINESS_TYPE)
+        self.assertEqual(session.collected_business_type, "")
+        self.assertFalse(User.objects.filter(phone_number=self.phone).exists())
+
+        next_reply = handle_incoming_sms(self.phone, "8")
+        self.assertEqual(next_reply, sms_label("english", "sms_register_ask_frequency"))
+        session.refresh_from_db()
+        self.assertEqual(session.collected_business_type, BusinessType.TRADER)
+
+    def test_invalid_tracking_frequency_is_reasked(self):
+        handle_incoming_sms(self.phone, "REGISTER")
+        handle_incoming_sms(self.phone, "Amina Nalwoga")
+        handle_incoming_sms(self.phone, "Amina Stall")
+        handle_incoming_sms(self.phone, "8")
+        reply = handle_incoming_sms(self.phone, "9")
+        self.assertEqual(reply, sms_label("english", "sms_register_invalid_frequency"))
+        session = RegistrationSession.objects.get(phone_number=self.phone)
+        self.assertEqual(session.current_step, RegistrationStep.AWAITING_TRACKING_FREQUENCY)
+        self.assertEqual(session.collected_tracking_frequency, "")
+        self.assertFalse(User.objects.filter(phone_number=self.phone).exists())
+
+        done = handle_incoming_sms(self.phone, "1")
+        self.assertEqual(done, sms_label("english", "sms_register_done", name="Amina Nalwoga"))
+        user = User.objects.get(phone_number=self.phone)
+        self.assertEqual(user.business_profile.tracking_frequency, TrackingFrequency.DAILY)
+
+    def test_stale_session_is_discarded_on_new_register(self):
+        handle_incoming_sms(self.phone, "REGISTER")
+        handle_incoming_sms(self.phone, "Old Name")
+        session = RegistrationSession.objects.get(phone_number=self.phone)
+        RegistrationSession.objects.filter(pk=session.pk).update(
+            updated_at=timezone.now() - timedelta(minutes=31),
+        )
+
+        reply = handle_incoming_sms(self.phone, "REGISTER")
+        self.assertEqual(reply, sms_label("english", "sms_register_welcome"))
+        session.refresh_from_db()
+        self.assertEqual(session.current_step, RegistrationStep.AWAITING_NAME)
+        self.assertEqual(session.collected_full_name, "")
+        self.assertFalse(User.objects.filter(phone_number=self.phone).exists())
 
 
 class IncomingSMSWebhookTests(APITestCase):

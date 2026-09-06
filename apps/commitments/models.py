@@ -46,6 +46,7 @@ class Commitment(models.Model):
     )
     adjustment_reason = models.TextField(blank=True)
     created_at = models.DateTimeField(auto_now_add=True)
+    last_reminded_at = models.DateTimeField(blank=True, null=True)
 
     class Meta:
         ordering = ["period_end", "-created_at"]
