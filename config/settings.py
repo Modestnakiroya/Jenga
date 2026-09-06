@@ -1,5 +1,6 @@
 from datetime import timedelta
 from pathlib import Path
+from urllib.parse import quote_plus
 import os
 import sys
 
@@ -87,27 +88,25 @@ TEMPLATES = [
 
 WSGI_APPLICATION = "config.wsgi.application"
 
-# Render sets DATABASE_URL when a Postgres database is attached.
-# Local development keeps the existing DB_* PostgreSQL settings when DATABASE_URL is unset.
-if os.environ.get("DATABASE_URL"):
-    DATABASES = {
-        "default": dj_database_url.config(
-            default=os.environ["DATABASE_URL"],
-            conn_max_age=600,
-            ssl_require=True,
-        )
-    }
-else:
-    DATABASES = {
-        "default": {
-            "ENGINE": "django.db.backends.postgresql",
-            "NAME": os.environ["DB_NAME"],
-            "USER": os.environ["DB_USER"],
-            "PASSWORD": os.environ["DB_PASSWORD"],
-            "HOST": os.environ["DB_HOST"],
-            "PORT": os.getenv("DB_PORT", "5432"),
-        }
-    }
+def _local_database_url():
+    """Same local PostgreSQL this project already uses, as a URL for dj_database_url."""
+    user = quote_plus(os.getenv("DB_USER") or "postgres")
+    password = quote_plus(os.getenv("DB_PASSWORD") or "")
+    host = os.getenv("DB_HOST") or "localhost"
+    port = os.getenv("DB_PORT") or "5432"
+    name = os.getenv("DB_NAME") or "jenga"
+    return f"postgres://{user}:{password}@{host}:{port}/{name}"
+
+
+# Render sets DATABASE_URL when Postgres is attached. Local .env has no DATABASE_URL,
+# so this falls back to the existing local PostgreSQL connection.
+DATABASES = {
+    "default": dj_database_url.config(
+        default=_local_database_url(),
+        conn_max_age=600,
+        ssl_require=bool(os.getenv("DATABASE_URL") or os.getenv("RENDER")),
+    )
+}
 
 AUTH_USER_MODEL = "accounts.User"
 
