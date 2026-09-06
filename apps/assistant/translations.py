@@ -1263,9 +1263,14 @@ def page_label(language, key):
     return pack.get(key) or ENGLISH_LABELS.get(key) or key
 
 
-class PageLabels:
+class PageLabels(dict):
+    """Landing/nav copy for one language. A dict so Django templates always resolve keys."""
+
     def __init__(self, language):
-        self.language = language
+        code = (language or "english").lower()
+        pack = DASHBOARD_LABELS.get(code) or DASHBOARD_LABELS["english"]
+        super().__init__(pack)
+        self.language = code
 
     def __getitem__(self, key):
         return page_label(self.language, key)

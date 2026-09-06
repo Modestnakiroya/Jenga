@@ -198,10 +198,14 @@ class LandingLanguageTests(TestCase):
         response = self.client.get("/")
         self.assertEqual(response.status_code, 200)
         self.assertContains(response, 'id="landing-language"')
-        self.assertContains(response, page_label("english", "landing_headline"))
+        self.assertContains(response, f"<h1>{page_label('english', 'landing_headline')}</h1>")
+        self.assertContains(response, page_label("english", "landing_create_account"))
+        self.assertContains(response, f'id="hero-login">{page_label("english", "landing_log_in")}</button>')
         self.assertContains(response, 'option value="english" selected')
         self.assertContains(response, 'id="preferred_language"')
         self.assertContains(response, 'id="dash-language"')
+        self.assertContains(response, 'id="nav-login"')
+        self.assertContains(response, page_label("english", "nav_login"))
 
     def test_landing_choice_updates_copy_and_signup_default(self):
         response = self.client.get("/?language=luganda")

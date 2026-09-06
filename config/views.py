@@ -47,7 +47,7 @@ class HomeView(TranslatedPageMixin, TemplateView):
         context["languages"] = Language.choices
         context["landing_language"] = landing_language
         context["landing_html_lang"] = LANDING_HTML_LANG.get(landing_language, "en")
-        context["landing_text"] = PageLabels(landing_language)
+        context["landing_text"] = dict(PageLabels(landing_language))
         labels = dict(TransactionCategory.choices)
         context["income_categories"] = [
             (value, labels[value]) for value in INCOME_CATEGORIES

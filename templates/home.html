@@ -335,7 +335,7 @@
   {% include "partials/design_system.html" %}
 </head>
 <body class="page-home">
-  <a class="skip-link" href="#main-content">{{ landing_text.skip_to_content }}</a>
+  <a class="skip-link" href="#main-content">{{ landing_text.skip_to_content|default:"Skip to content" }}</a>
   <main id="main-content" tabindex="-1">
     {% include "partials/navbar.html" with variant="public" %}
 
@@ -343,44 +343,44 @@
     <section class="landing" id="landing-intro">
       <div class="hero-copy">
         <form class="landing-language" method="get" action="">
-          <label for="landing-language">{{ landing_text.language }}</label>
+          <label for="landing-language">{{ landing_text.language|default:"Language" }}</label>
           <select id="landing-language" name="language" onchange="this.form.submit()">
             {% for value, label in languages %}
-              <option value="{{ value }}"{% if value == landing_language %} selected{% endif %}>{{ label }}</option>
+              <option value="{{ value }}"{% if value == landing_language|default:'english' %} selected{% endif %}>{{ label }}</option>
             {% endfor %}
           </select>
-          <noscript><button type="submit">{{ landing_text.language }}</button></noscript>
+          <noscript><button type="submit">{{ landing_text.language|default:"Language" }}</button></noscript>
         </form>
-        <p class="eyebrow">{{ landing_text.landing_eyebrow }}</p>
-        <h1>{{ landing_text.landing_headline }}</h1>
-        <p class="lead">{{ landing_text.landing_lead }}</p>
+        <p class="eyebrow">{{ landing_text.landing_eyebrow|default:"A clearer way to grow" }}</p>
+        <h1>{{ landing_text.landing_headline|default:"Make every shilling work harder." }}</h1>
+        <p class="lead">{{ landing_text.landing_lead|default:"Jenga brings your business cash flow, goals, and next best move into one calm financial workspace." }}</p>
         <div class="hero-actions">
-          <button class="primary" type="button" id="hero-register">{{ landing_text.landing_create_account }}</button>
-          <button class="secondary" type="button" id="hero-login">{{ landing_text.landing_log_in }}</button>
+          <button class="primary" type="button" id="hero-register">{{ landing_text.landing_create_account|default:"Create your account" }}</button>
+          <button class="secondary" type="button" id="hero-login">{{ landing_text.landing_log_in|default:"Log in" }}</button>
         </div>
-        <p class="hero-note">{{ landing_text.landing_hero_note }}</p>
+        <p class="hero-note">{{ landing_text.landing_hero_note|default:"Built for ambitious businesses. Simple enough for every day." }}</p>
       </div>
-      <div class="hero-visual" aria-label="{{ landing_text.landing_visual_aria }}">
-        <span class="visual-caption">{{ landing_text.landing_plan_caption }}</span>
+      <div class="hero-visual" aria-label="{{ landing_text.landing_visual_aria|default:"Illustration of a business owner planning their money" }}">
+        <span class="visual-caption">{{ landing_text.landing_plan_caption|default:"PLAN WITH CONFIDENCE" }}</span>
         <span class="money-spark">✦</span><span class="money-spark two">✦</span>
         <div class="character" aria-hidden="true">
           <div class="character-head"><span class="character-hair"></span></div>
           <div class="character-body"><span class="character-wallet"></span></div>
         </div>
-        <p class="visual-note">{{ landing_text.landing_visual_note }}</p>
+        <p class="visual-note">{{ landing_text.landing_visual_note|default:"Small steps. Stronger business." }}</p>
       </div>
     </section>
 
     <section class="how-section" id="how-it-works" aria-labelledby="how-title">
-      <p class="eyebrow">{{ landing_text.landing_how_eyebrow }}</p>
-      <h2 id="how-title">{{ landing_text.landing_how_title }}</h2>
-      <p class="lead">{{ landing_text.landing_how_lead }}</p>
+      <p class="eyebrow">{{ landing_text.landing_how_eyebrow|default:"How it works" }}</p>
+      <h2 id="how-title">{{ landing_text.landing_how_title|default:"A little clarity, every day." }}</h2>
+      <p class="lead">{{ landing_text.landing_how_lead|default:"Three simple steps to understand your business money and plan ahead." }}</p>
       <div class="how-steps">
-        <article><span class="step-number">01</span><h3>{{ landing_text.landing_step1_title }}</h3><p>{{ landing_text.landing_step1_body }}</p></article>
-        <article><span class="step-number">02</span><h3>{{ landing_text.landing_step2_title }}</h3><p>{{ landing_text.landing_step2_body }}</p></article>
-        <article><span class="step-number">03</span><h3>{{ landing_text.landing_step3_title }}</h3><p>{{ landing_text.landing_step3_body }}</p></article>
+        <article><span class="step-number">01</span><h3>{{ landing_text.landing_step1_title|default:"Record your day" }}</h3><p>{{ landing_text.landing_step1_body|default:"Add income and expenses as they happen, using categories that fit your business." }}</p></article>
+        <article><span class="step-number">02</span><h3>{{ landing_text.landing_step2_title|default:"See where you stand" }}</h3><p>{{ landing_text.landing_step2_body|default:"Review your daily, weekly or monthly summary and follow your savings goals." }}</p></article>
+        <article><span class="step-number">03</span><h3>{{ landing_text.landing_step3_title|default:"Plan your next step" }}</h3><p>{{ landing_text.landing_step3_body|default:"Check what you can afford and work toward your business and retirement goals." }}</p></article>
       </div>
-      <a class="landing-partner-link" href="/partnerships/">{{ landing_text.landing_partners_link }}</a>
+      <a class="landing-partner-link" href="/partnerships/">{{ landing_text.landing_partners_link|default:"Explore SACCO and bank partnerships" }}</a>
     </section>
     </div>
 
