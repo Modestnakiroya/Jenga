@@ -1,0 +1,10 @@
+{% include "partials/session_client.html" %}
+<script>
+  document.getElementById('page-menu-toggle').addEventListener('click', event => {
+    const nav = event.currentTarget.closest('nav');
+    event.currentTarget.setAttribute('aria-expanded', String(nav.classList.toggle('menu-open')));
+  });
+  document.getElementById('logout-button').addEventListener('click', () => {
+    sessionStorage.removeItem('jengaAccessToken'); sessionStorage.removeItem('jengaRefreshToken'); window.location.href = '/';
+  });
+</script>

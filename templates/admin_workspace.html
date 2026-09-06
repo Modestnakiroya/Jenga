@@ -1,0 +1,45 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Administration | Jenga</title>
+  <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700&display=swap" rel="stylesheet">
+  {% include "partials/design_system.html" %}
+  <style>
+    main{max-width:1180px;margin:auto;padding:0 1.25rem 3rem}.admin-nav{display:flex;align-items:center;justify-content:space-between;padding:1rem 1.4rem;margin:1rem 0 2rem;background:linear-gradient(110deg,#142e52,#245fc5);border-radius:18px;color:white}.admin-nav a{color:white;text-decoration:none}.admin-nav .brand{font-size:1.5rem;font-weight:700}.admin-nav button{border:0;background:transparent;color:white;display:flex;padding:.5rem}.admin-nav svg{width:24px;height:24px;fill:none;stroke:currentColor;stroke-width:2}.admin-grid{display:grid;grid-template-columns:1fr 1fr;gap:1.25rem;margin:1.5rem 0}summary{cursor:pointer;font-weight:600;color:var(--navy);padding:.5rem 0}.admin-form label{display:block;font-weight:500;margin:.9rem 0 .3rem}.admin-form input,.admin-form select{width:100%;padding:.7rem;border:1px solid var(--line);border-radius:10px;background:white}.helptext{display:block;color:var(--muted);font-size:.8rem}.errorlist{color:var(--err);padding-left:1.25rem}.action{display:inline-block;background:var(--accent);color:white;border:0;border-radius:10px;padding:.7rem 1.1rem;margin-top:1rem;text-decoration:none}.danger{background:var(--err)}.notice{padding:1rem;border-radius:12px;background:var(--blue-soft);margin:1rem 0}.table-scroll{overflow:auto}table{border-collapse:collapse;width:100%;text-align:left}td,th{padding:.85rem;border-bottom:1px solid var(--line)}td form{margin:0}td button{border:0;background:transparent;color:var(--err)}.tag{display:inline-block;background:var(--blue-soft);padding:.2rem .6rem;border-radius:20px;font-size:.8rem}.search{display:flex;gap:.5rem;align-items:center;margin:1rem 0}.search input{min-width:0;flex:1;padding:.7rem;border:1px solid var(--line);border-radius:10px}.search button{margin:0}.institutions{list-style:none;padding:0}.institutions li{display:flex;justify-content:space-between;gap:1rem;padding:.7rem 0;border-bottom:1px solid var(--line)}@media(max-width:700px){.admin-grid{grid-template-columns:1fr}.admin-nav{padding:1rem}.card{padding:1rem}}
+  </style>
+</head>
+<body><main>
+  <nav class="admin-nav" aria-label="Admin navigation"><a class="brand" href="{% url 'admin-workspace' %}">jenga.</a><span>Administration</span><form method="post" action="{% url 'admin:logout' %}">{% csrf_token %}<button aria-label="Log out" title="Log out"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4M21 12H9m7-5 5 5-5 5"/></svg></button></form></nav>
+  {% for message in messages %}<p class="notice" role="status">{{ message }}</p>{% endfor %}
+  {% if delete_target %}
+    <section class="card"><h1>Delete {{ delete_target.full_name }}?</h1><p>This permanently deletes this user and their associated financial records and access assignments. This cannot be undone.</p>
+      <form method="post">{% csrf_token %}<input type="hidden" name="action" value="delete_user"><input type="hidden" name="user_id" value="{{ delete_target.pk }}"><input type="hidden" name="confirm" value="yes"><a href="{% url 'admin-workspace' %}">Cancel</a> <button class="action danger">Delete user permanently</button></form>
+    </section>
+  {% else %}
+    <p class="eyebrow">Your workspace</p><h1>People and institutions</h1><p class="lead">Add your partner institutions and manage who can use Jenga.</p>
+    <div class="admin-grid">
+      <section class="card"><h2>SACCOs and banks</h2>
+        <details {% if institution_form.errors %}open{% endif %}><summary>+ Add institution</summary><form method="post" class="admin-form">{% csrf_token %}<input type="hidden" name="action" value="add_institution">{{ institution_form.as_p }}<button class="action">Save institution</button></form></details>
+        <ul class="institutions">{% for sacco in saccos %}<li>{{ sacco.name }} <span class="tag">SACCO</span></li>{% endfor %}{% for bank in banks %}<li>{{ bank.name }} <span class="tag">Bank</span></li>{% endfor %}</ul>
+        {% if not saccos and not banks %}<p class="hint">No institutions yet. Add your first SACCO or bank above.</p>{% endif %}
+      </section>
+      <section class="card"><h2>Add a person</h2><p class="hint">Create a member, bank or SACCO representative, or another administrator.</p>
+        <details {% if user_form.errors %}open{% endif %}><summary>+ Add user</summary><form method="post" class="admin-form">{% csrf_token %}<input type="hidden" name="action" value="add_user">{{ user_form.as_p }}<p class="hint">Administrators can manage all users and institutions. Give this role only to people you trust.</p><button class="action">Create user</button></form></details>
+      </section>
+    </div>
+    <section class="card"><h2>Users</h2>
+      <form method="get" class="search"><input name="q" value="{{ query }}" placeholder="Search name or phone" aria-label="Search users"><button class="action">Search</button></form>
+      <div class="table-scroll"><table><thead><tr><th>Name</th><th>Phone</th><th>Role</th><th>Action</th></tr></thead><tbody>
+        {% for person in users %}<tr><td>{{ person.full_name }}</td><td>{{ person.phone_number }}</td><td>{% if person.is_superuser %}Administrator{% elif person.bank_access.is_active %}Bank &middot; {{ person.bank_access.bank.name }}{% elif person.sacco_access.is_active %}SACCO &middot; {{ person.sacco_access.sacco.name }}{% else %}Member{% endif %}</td><td>{% if person.pk != request.user.pk %}<form method="post">{% csrf_token %}<input type="hidden" name="action" value="delete_user"><input type="hidden" name="user_id" value="{{ person.pk }}"><button>Delete<span class="sr-only"> {{ person.full_name }}</span></button></form>{% else %}<span class="hint">You</span>{% endif %}</td></tr>{% empty %}<tr><td colspan="4">No users found.</td></tr>{% endfor %}
+      </tbody></table></div>
+      <p>{% if users.has_previous %}<a href="?page={{ users.previous_page_number }}&amp;q={{ query|urlencode }}">Previous</a>{% endif %} Page {{ users.number }} of {{ users.paginator.num_pages }} {% if users.has_next %}<a href="?page={{ users.next_page_number }}&amp;q={{ query|urlencode }}">Next</a>{% endif %}</p>
+      <details {% if access_form.errors %}open{% endif %}><summary>Manage an existing user's institution</summary><form method="post" class="admin-form">{% csrf_token %}<input type="hidden" name="action" value="access">{{ access_form.as_p }}<p class="hint">Leave the selected institution field empty to remove this assignment. Changing membership requires the member to opt into sharing again.</p><button class="action">Save assignment</button></form></details>
+    </section>
+  {% endif %}
+</main><script>
+document.querySelector('form[action="{% url "admin:logout" %}"]').addEventListener('submit', () => {
+  sessionStorage.removeItem('jengaAccessToken');
+  sessionStorage.removeItem('jengaRefreshToken');
+});
+</script></body></html>

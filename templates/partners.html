@@ -55,10 +55,10 @@
         <p class="hint" data-i18n="record_existing_account">Record an existing account and its terms. This does not open or link a bank account.</p>
         <form id="partner-form">
           <div class="partner-field">
-          <label for="institution-name" data-i18n="institution_name">Bank or SACCO name</label><input id="institution-name" name="institution_name" maxlength="180" required>
+          <label for="institution-name">Bank or SACCO</label><select id="institution-name" name="institution" required><option value="">Choose an institution</option></select>
           </div>
           <div class="partner-field">
-          <label for="institution-type" data-i18n="institution_type">Institution type</label><select id="institution-type" name="institution_type"><option value="bank" data-i18n="bank">Bank</option><option value="sacco" data-i18n="sacco">SACCO</option></select>
+          <p class="hint">Choose an institution registered by your administrator. Adding an account does not enable data sharing.</p>
           </div>
           <div class="partner-field">
           <label for="account-name" data-i18n="account_name">Account name</label><input id="account-name" name="account_name" maxlength="180" required>
@@ -143,8 +143,20 @@
     const partnerForm = document.getElementById('partner-form');
     const partnerMessage = document.getElementById('partner-message');
     function closePartner() { partnerOverlay.classList.add('hidden'); document.body.classList.remove('modal-open'); }
-    document.getElementById('open-partner').addEventListener('click', () => {
+    document.getElementById('open-partner').addEventListener('click', async () => {
       partnerMessage.textContent = ''; partnerOverlay.classList.remove('hidden'); document.body.classList.add('modal-open');
+      const select = document.getElementById('institution-name');
+      select.disabled = true;
+      select.replaceChildren(new Option('Loading institutions...', ''));
+      try {
+        const response = await sessionFetch('/api/v1/institutions/');
+        if (!response.ok) throw new Error('Unavailable');
+        const institutions = await response.json();
+        select.replaceChildren(new Option('Choose an institution', ''));
+        institutions.forEach(item => select.add(new Option(item.name + ' (' + (item.type === 'bank' ? 'Bank' : 'SACCO') + ')', item.id)));
+        if (!institutions.length) partnerMessage.textContent = 'No institutions are registered yet. Ask your administrator to add one.';
+      } catch { select.replaceChildren(new Option('Institutions unavailable', '')); partnerMessage.textContent = 'Could not load institutions. Close and reopen this form to try again.'; }
+      finally { select.disabled = false; }
     });
     document.getElementById('partner-close').addEventListener('click', closePartner);
     partnerOverlay.addEventListener('click', event => { if (event.target === partnerOverlay) closePartner(); });

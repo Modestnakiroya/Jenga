@@ -1,0 +1,56 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Institution login | Jenga</title>
+  <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700&display=swap" rel="stylesheet">
+  {% include "partials/design_system.html" %}
+  <style>
+    main{max-width:1180px;margin:auto;padding:0 1.25rem 3rem;}
+    .login-layout{display:grid;grid-template-columns:1fr 1fr;gap:3rem;align-items:center;margin:3rem 0;}
+    .login-card{width:100%;max-width:480px;justify-self:center;box-sizing:border-box;}
+    .login-card label{display:block;margin:1rem 0 .4rem;font-weight:600;}
+    .login-card input{width:100%;box-sizing:border-box;padding:.85rem;border:1px solid var(--line);border-radius:12px;font:inherit;}
+    .login-card button{width:100%;margin-top:1.25rem;padding:.9rem;border:0;border-radius:12px;background:#2155cd;color:white;font:inherit;font-weight:600;cursor:pointer;}
+    .login-card button:disabled{opacity:.65;cursor:wait;}
+    @media(max-width:760px){.login-layout{grid-template-columns:1fr;gap:1rem;margin:1.5rem 0;}}
+  </style>
+</head>
+<body><main>
+  {% include "partials/navbar.html" with variant="visitor" %}
+  <div class="login-layout">
+    <section><p class="eyebrow">Institution workspace</p><h1>Understand how your members are saving.</h1>
+      <p class="lead">See savings growth and business-sector trends for your institution's participating members.</p>
+      <p>Access is assigned by a Jenga administrator. Reports show group trends, with individual balances and personal records kept private.</p>
+      <p>Managing Jenga? <a href="/admin/">Open admin login</a></p>
+    </section>
+    <section class="card login-card"><h2>Institution login</h2>
+      <form id="sacco-login-form">
+        <label for="phone">Phone number</label><input id="phone" type="tel" autocomplete="username" required placeholder="07XXXXXXXX">
+        <label for="password">Password</label><input id="password" type="password" autocomplete="current-password" required>
+        <button id="sign-in" type="submit">Sign in to your institution</button>
+      </form>
+      <p id="login-status" role="status" aria-live="polite"></p>
+      <p class="hint">Need access or password help? Contact your administrator.</p>
+      <a href="/?start=login">Member login</a>
+    </section>
+  </div>
+</main>
+<script>
+  document.getElementById('page-menu-toggle').addEventListener('click',event=>{
+    const nav=event.currentTarget.closest('nav');event.currentTarget.setAttribute('aria-expanded',String(nav.classList.toggle('menu-open')));
+  });
+  document.getElementById('sacco-login-form').addEventListener('submit',async event=>{
+    event.preventDefault();const button=document.getElementById('sign-in');if(button.disabled)return;
+    const status=document.getElementById('login-status');button.disabled=true;button.textContent='Signing in...';status.textContent='';
+    try{
+      const response=await fetch('/api/v1/auth/sacco/login/',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({phone_number:document.getElementById('phone').value.trim(),password:document.getElementById('password').value})});
+      const data=await response.json();
+      if(!response.ok){status.textContent=data.detail||'Check your phone number and password, then try again.';return;}
+      sessionStorage.setItem('jengaAccessToken',data.access);sessionStorage.setItem('jengaRefreshToken',data.refresh);
+      document.getElementById('password').value='';window.location.href='/sacco/';
+    }catch{status.textContent='Could not connect. Please try again.';}
+    finally{button.disabled=false;button.textContent='Sign in to your institution';}
+  });
+</script>
+</body></html>

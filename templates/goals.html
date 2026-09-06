@@ -69,7 +69,7 @@
   <main id="main-content" tabindex="-1">
     {% include "partials/navbar.html" %}
     <h1 data-i18n="savings_goals">Savings goals</h1>
-    <p class="lead" data-i18n="savings_goals_lead">Track what you are saving toward.</p>
+    <p class="lead">Track what you are saving toward.</p>
 
     <div class="card savings-overview">
       <div><p class="metric" data-i18n="current_savings_across">Current savings across your goals</p><p class="amount large" id="savings-total">Loading...</p><p class="hint" id="savings-count"></p></div>
@@ -82,7 +82,7 @@
     </section>
     <div class="overlay hidden" id="goal-overlay">
     <div class="card">
-      <div class="card-head"><h2 id="goal-dialog-title" data-i18n="add_a_goal">Add a goal</h2><button type="button" class="ghost icon-close" id="goal-close" aria-label="Close add goal form" data-i18n-aria="close"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="m6 6 12 12M6 18 18 6"/></svg></button></div>
+      <div class="card-head"><h2 id="goal-dialog-title" data-i18n="add_a_goal">Add a savings goal</h2><button type="button" class="ghost icon-close" id="goal-close" aria-label="Close add goal form"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="m6 6 12 12M6 18 18 6"/></svg></button></div>
       <form id="goal-form">
         <label for="goal-name" data-i18n="goal_name">Name</label>
         <input id="goal-name" required>
@@ -114,6 +114,8 @@
   {% include "partials/session_client.html" %}
   {% include "partials/i18n.html" %}
   <script>
+    const DASHBOARD_LABELS = {{ dashboard_labels_json|safe }};
+    let currentLanguage = "english";
     const list = document.getElementById("goals-list");
     const empty = document.getElementById("goals-empty");
     const message = document.getElementById("message");
@@ -195,7 +197,7 @@
         return;
       }
       const response = await sessionFetch("/api/v1/goals/");
-      const data = await response.json().catch(() => []);
+      const data = await response.json().catch(() => ([]));
       if (!response.ok) {
         document.getElementById("savings-total").textContent = t("unavailable");
         empty.textContent = t("could_not_load_goals");
@@ -244,9 +246,19 @@
       } finally { button.disabled = false; }
     });
 
-    loadPreferredLanguage().then(loadGoals).catch(() => {
-      document.getElementById("savings-total").textContent = t("unavailable");
-      empty.textContent = t("could_not_load_savings");
+    async function initializeGoals() {
+      if (sessionStorage.getItem("jengaAccessToken") || sessionStorage.getItem("jengaRefreshToken")) {
+        try {
+          const response = await sessionFetch("/api/v1/profile/");
+          if (response.ok) currentLanguage = (await response.json()).preferred_language || "english";
+        } catch { /* Goals can still be retried independently. */ }
+      }
+      applyLabels();
+      await loadGoals();
+    }
+    initializeGoals().catch(() => {
+      document.getElementById("savings-total").textContent = "Unavailable";
+      empty.textContent = "Could not load savings. Please refresh to try again.";
       empty.classList.remove("hidden");
     });
   </script>

@@ -466,25 +466,6 @@ class HomePageI18nTests(APITestCase):
         self.assertIn("Ensawo y'akatyabaga", html)
         self.assertIn("Tereka goolo", html)
 
-    def test_assistant_page_embeds_luganda_labels(self):
-        response = self.client.get("/assistant/")
-        self.assertEqual(response.status_code, 200)
-        html = response.content.decode()
-        self.assertIn('data-i18n="ask_jenga"', html)
-        self.assertIn('data-i18n="nav_assistant"', html)
-        self.assertIn("Omuyambi wa AI", html)
-        self.assertIn("Buza Jenga", html)
+    def test_removed_commitments_page_is_not_exposed(self):
+        self.assertEqual(self.client.get("/commitments/").status_code, 404)
 
-    def test_partners_page_embeds_luganda_labels(self):
-        response = self.client.get("/partners/")
-        self.assertEqual(response.status_code, 200)
-        html = response.content.decode()
-        self.assertIn('data-i18n="partner_accounts"', html)
-        self.assertIn("Akaawunti z'abakolagana", html)
-
-    def test_profile_page_embeds_luganda_labels(self):
-        response = self.client.get("/profile/")
-        self.assertEqual(response.status_code, 200)
-        html = response.content.decode()
-        self.assertIn('data-i18n="your_profile"', html)
-        self.assertIn("Profailo yo", html)

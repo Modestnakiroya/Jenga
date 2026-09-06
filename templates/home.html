@@ -434,17 +434,7 @@
 
       <form id="reset-form" class="hidden">
         <h2 class="reset-heading" tabindex="-1" id="reset-heading">Reset your password</h2>
-        <p class="reset-description">Enter the phone number you registered with and choose a new password.</p>
-        <label for="reset_phone">Phone number</label>
-        <input id="reset_phone" name="reset_phone" type="tel" required autocomplete="tel">
-
-        <label for="reset_password">New password</label>
-        <input id="reset_password" name="reset_password" type="password" required minlength="8" autocomplete="new-password" aria-describedby="reset-help">
-        <small class="password-help" id="reset-help">Use at least 8 characters. Avoid common passwords or numbers only.</small>
-        <label for="reset_confirm">Confirm new password</label>
-        <input id="reset_confirm" type="password" required minlength="8" autocomplete="new-password">
-
-        <button type="submit">Update password</button>
+        <p class="reset-description">Contact your administrator for help resetting your password. They will verify your identity before changing it.</p>
         <button type="button" class="ghost" id="show-login">Back to log in</button>
       </form>
 
@@ -482,6 +472,7 @@
         </div>
       </header>
 
+      <p><a class="primary-action" href="/insights/">AI insights</a> <a id="admin-console" class="hidden" href="/admin/">Admin console</a></p>
       <div class="stack">
 
         <section class="card">
@@ -1128,18 +1119,21 @@
     }
 
     function showDashboard(profile) {
+      if (["sacco", "bank"].includes(profile.role)) { window.location.href = "/sacco/"; return; }
       document.getElementById("public-nav").classList.add("hidden");
       document.getElementById("landing-content").classList.add("hidden");
       document.getElementById("auth-area").classList.add("hidden");
-      rememberLanguage(profile.preferred_language || "english");
+      document.getElementById("admin-console").classList.toggle("hidden", profile.role !== "admin");
+      currentLanguage = profile.preferred_language || "english";
       applyDashboardLabels();
       syncLanguageControl();
       document.getElementById("auth-intro").classList.add("hidden");
       document.getElementById("auth-card").classList.add("hidden");
       document.getElementById("dashboard").classList.remove("hidden");
-      document.getElementById("dash-business").textContent = profile.business_profile.business_name;
+      const business = profile.business_profile || {business_name: "Your business", tracking_frequency: "weekly"};
+      document.getElementById("dash-business").textContent = business.business_name;
       document.getElementById("dash-owner").textContent = profile.full_name;
-      savedFrequency = profile.business_profile.tracking_frequency;
+      savedFrequency = business.tracking_frequency;
       document.getElementById("dash-frequency").value = savedFrequency;
       loadRecentActivity();
       loadFinancialSummary();
@@ -1198,7 +1192,6 @@
       document.querySelector(".tabs").classList.add("hidden");
       resetForm.classList.remove("hidden");
       document.getElementById("reset-heading").focus();
-      document.getElementById("reset_phone").value = document.getElementById("login_phone").value;
       message.className = "msg";
     });
 
@@ -1261,49 +1254,6 @@
         showMessage("Could not connect. Please try again. If this continues, check that the server is running.", false);
       } finally {
         button.disabled = false;
-      }
-    });
-
-    const resetConfirm = document.getElementById("reset_confirm");
-    const resetPassword = document.getElementById("reset_password");
-    [resetConfirm, resetPassword].forEach((field) => field.addEventListener("input", () => {
-      resetConfirm.setCustomValidity("");
-    }));
-    resetForm.addEventListener("submit", async (event) => {
-      event.preventDefault();
-      if (resetPassword.value !== resetConfirm.value) {
-        resetConfirm.setCustomValidity("Passwords do not match.");
-        resetConfirm.reportValidity();
-        return;
-      }
-      const button = resetForm.querySelector("button[type=submit]");
-      const originalLabel = button.textContent;
-      if (button.disabled) return;
-      button.disabled = true;
-      button.textContent = "Updating password...";
-      resetForm.setAttribute("aria-busy", "true");
-      message.className = "msg";
-      try {
-        const { response, data } = await postJson("/api/v1/auth/reset-password/", {
-          phone_number: document.getElementById("reset_phone").value.trim(),
-          password: resetPassword.value,
-        });
-        if (!response.ok) {
-          showMessage(fieldErrors(data), false);
-          return;
-        }
-        document.getElementById("login_phone").value = document.getElementById("reset_phone").value.trim();
-        document.getElementById("login_password").value = "";
-        resetForm.reset();
-        document.querySelector('[data-tab="login"]').click();
-        showMessage("Password updated. Log in with your new password.", true);
-        document.getElementById("login_password").focus();
-      } catch {
-        showMessage("Could not connect. Check your connection and try again.", false);
-      } finally {
-        button.disabled = false;
-        button.textContent = originalLabel;
-        resetForm.removeAttribute("aria-busy");
       }
     });
 

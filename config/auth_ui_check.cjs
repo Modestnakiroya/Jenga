@@ -24,6 +24,7 @@ process.stdin.on('end', async () => {
       querySelector() { return this.button ||= new Element(); }
       querySelectorAll(){return [];}
       closest(){return this.parent;}
+      reportValidity(){return true;} setCustomValidity(){} reset(){} removeAttribute(k){delete this.attrs[k];}
     }
     const nodes = Object.fromEntries(elements.filter(a => a.id).map(a => [a.id,new Element(a)]));
     const tabs = ['register','login'].map(tab => new Element({'data-tab':tab}));
@@ -41,7 +42,7 @@ process.stdin.on('end', async () => {
       },
       sessionStorage:{getItem:k=>storage.get(k)||null,setItem:(k,v)=>storage.set(k,v),removeItem:k=>storage.delete(k)},
       window:{location:{pathname:entry === 'signup' ? '/signup/' : '/',search:'',reload(){reloads++;}},scrollTo(){}}, URLSearchParams,
-      fetch: async url => {
+      fetch: async (url, options) => {
         requests++;
         if(mode === 'offline') throw Error('offline');
         const data = url.includes('auth/login') ? {access:'test-access',refresh:'test-refresh'} : profile;
@@ -76,6 +77,9 @@ process.stdin.on('end', async () => {
     await nodes['public-menu-toggle'].click();
     assert.equal(nodes['public-menu-toggle'].attrs['aria-expanded'],'true');
     await nodes['nav-login'].click();
+    await nodes['show-reset'].click();
+    assert.match(nodes['reset-form'].classList.contains('hidden').toString(), /false/);
+    await nodes['show-login'].click();
     mode = 'offline';
     await nodes['login-form'].fire('submit');
     assert.equal(nodes['login-form'].querySelector().disabled,false);

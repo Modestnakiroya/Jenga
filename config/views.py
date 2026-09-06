@@ -44,3 +44,11 @@ class AssistantPageView(TranslatedPageMixin, TemplateView):
 
 class PartnersView(TranslatedPageMixin, TemplateView):
     template_name = "partners.html"
+
+
+class InsightsPageView(TemplateView):
+    template_name = "insights.html"
+
+
+class SaccoPageView(TemplateView):
+    template_name = "sacco.html"

@@ -96,29 +96,11 @@ class AccountsAPITests(APITestCase):
         self.assertEqual(response.status_code, status.HTTP_200_OK)
         self.assertIn("access", response.data)
 
-    def test_reset_password_then_login(self):
+    def test_unverified_reset_cannot_change_password(self):
         self.register()
-        reset = self.client.post(
-            reverse("auth-reset-password"),
-            {"phone_number": "+256700123456", "password": "NewSecurePass123!"},
-            format="json",
-        )
-        self.assertEqual(reset.status_code, status.HTTP_200_OK)
-
-        old_password = self.client.post(
-            self.login_url,
-            {"phone_number": "+256700123456", "password": "SecurePass123!"},
-            format="json",
-        )
-        self.assertEqual(old_password.status_code, status.HTTP_401_UNAUTHORIZED)
-
-        new_password = self.client.post(
-            self.login_url,
-            {"phone_number": "+256700123456", "password": "NewSecurePass123!"},
-            format="json",
-        )
-        self.assertEqual(new_password.status_code, status.HTTP_200_OK)
-        self.assertIn("access", new_password.data)
+        reset = self.client.post("/api/v1/auth/reset-password/", {"phone_number": "+256700123456", "password": "NewSecurePass123!"}, format="json")
+        self.assertEqual(reset.status_code, 404)
+        self.authenticate()
 
     def test_login_with_incorrect_password_fails(self):
         self.register()

@@ -9,6 +9,7 @@
     <div class="nav-items">
     <a href="/#how-it-works">How it works</a>
     <a href="/partnerships/">Partnerships</a>
+    <a href="/sacco/login/">Institution login</a>
     </div>
     <button class="nav-back hidden" type="button" id="nav-back">Back to landing</button>
     <button class="nav-cta" type="button" id="nav-login">Log in</button>
@@ -18,14 +19,20 @@
     <a href="/#how-it-works">How it works</a>
     <a href="/partnerships/">Partnerships</a>
     <a href="/signup/">Get started</a>
+    <a href="/sacco/login/">Institution login</a>
     </div>
 {% else %}
     <div class="nav-items">
-    <a href="/" data-i18n="nav_dashboard">Dashboard</a>
-    <a href="/assistant/" data-i18n="nav_assistant">AI assistant</a>
-    <a href="/goals/" data-i18n="nav_goals">Goals</a>
-    <a href="/partners/" data-i18n="nav_partners">Partners</a>
-    <a href="/profile/" data-i18n="nav_profile">Profile</a>
+    {% if variant == "sacco" %}
+    <a href="/sacco/">Institution insights</a>
+    <a href="/profile/">Profile</a>
+    {% else %}
+    <a href="/">Dashboard</a>
+    <a href="/assistant/">AI assistant</a>
+    <a href="/goals/">Goals</a>
+    <a href="/partners/">Partners</a>
+    <a href="/profile/">Profile</a>
+    {% endif %}
     </div>
     <button type="button" class="logout-button" id="logout-button" title="Log out" aria-label="Log out" data-i18n-aria="nav_logout">
       <svg class="logout-icon" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4M21 12H9m7-5 5 5-5 5"/></svg>
