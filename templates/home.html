@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="{{ landing_html_lang|default:'en' }}">
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
@@ -31,6 +31,9 @@
     .hero-actions .primary { background: var(--accent); color: white; }
     .hero-actions .secondary { background: transparent; color: var(--accent); }
     .hero-note { color: var(--muted); font-size: 0.82rem; margin-top: 1rem; }
+    .landing-language { display: flex; flex-wrap: wrap; align-items: center; gap: 0.55rem; margin: 0 0 1.25rem; }
+    .landing-language label { font-size: 0.82rem; color: var(--muted); font-weight: 500; }
+    .landing-language select { font: inherit; border: 1px solid var(--line); border-radius: 8px; padding: 0.4rem 0.65rem; background: #fff; }
     .hero-visual { position: relative; min-height: 410px; overflow: hidden; border-radius: 28px; background: linear-gradient(150deg, #1053ae 0%, #1985e8 100%); box-shadow: 0 25px 60px rgba(18, 79, 157, 0.23); }
     .hero-visual::before, .hero-visual::after { position: absolute; border-radius: 50%; content: ""; background: rgba(255,255,255,0.12); }
     .hero-visual::before { width: 220px; height: 220px; right: -80px; top: -70px; }
@@ -332,43 +335,52 @@
   {% include "partials/design_system.html" %}
 </head>
 <body class="page-home">
-  <a class="skip-link" href="#main-content">Skip to content</a>
+  <a class="skip-link" href="#main-content">{{ landing_text.skip_to_content }}</a>
   <main id="main-content" tabindex="-1">
     {% include "partials/navbar.html" with variant="public" %}
 
     <div id="landing-content">
     <section class="landing" id="landing-intro">
       <div class="hero-copy">
-        <p class="eyebrow">A clearer way to grow</p>
-        <h1>Make every shilling work harder.</h1>
-        <p class="lead">Jenga brings your business cash flow, goals, and next best move into one calm financial workspace.</p>
+        <form class="landing-language" method="get" action="">
+          <label for="landing-language">{{ landing_text.language }}</label>
+          <select id="landing-language" name="language" onchange="this.form.submit()">
+            {% for value, label in languages %}
+              <option value="{{ value }}"{% if value == landing_language %} selected{% endif %}>{{ label }}</option>
+            {% endfor %}
+          </select>
+          <noscript><button type="submit">{{ landing_text.language }}</button></noscript>
+        </form>
+        <p class="eyebrow">{{ landing_text.landing_eyebrow }}</p>
+        <h1>{{ landing_text.landing_headline }}</h1>
+        <p class="lead">{{ landing_text.landing_lead }}</p>
         <div class="hero-actions">
-          <button class="primary" type="button" id="hero-register">Create your account</button>
-          <button class="secondary" type="button" id="hero-login">Log in</button>
+          <button class="primary" type="button" id="hero-register">{{ landing_text.landing_create_account }}</button>
+          <button class="secondary" type="button" id="hero-login">{{ landing_text.landing_log_in }}</button>
         </div>
-        <p class="hero-note">Built for ambitious businesses. Simple enough for every day.</p>
+        <p class="hero-note">{{ landing_text.landing_hero_note }}</p>
       </div>
-      <div class="hero-visual" aria-label="Illustration of a business owner planning their money">
-        <span class="visual-caption">PLAN WITH CONFIDENCE</span>
+      <div class="hero-visual" aria-label="{{ landing_text.landing_visual_aria }}">
+        <span class="visual-caption">{{ landing_text.landing_plan_caption }}</span>
         <span class="money-spark">✦</span><span class="money-spark two">✦</span>
         <div class="character" aria-hidden="true">
           <div class="character-head"><span class="character-hair"></span></div>
           <div class="character-body"><span class="character-wallet"></span></div>
         </div>
-        <p class="visual-note">Small steps. Stronger business.</p>
+        <p class="visual-note">{{ landing_text.landing_visual_note }}</p>
       </div>
     </section>
 
     <section class="how-section" id="how-it-works" aria-labelledby="how-title">
-      <p class="eyebrow">How it works</p>
-      <h2 id="how-title">A little clarity, every day.</h2>
-      <p class="lead">Three simple steps to understand your business money and plan ahead.</p>
+      <p class="eyebrow">{{ landing_text.landing_how_eyebrow }}</p>
+      <h2 id="how-title">{{ landing_text.landing_how_title }}</h2>
+      <p class="lead">{{ landing_text.landing_how_lead }}</p>
       <div class="how-steps">
-        <article><span class="step-number">01</span><h3>Record your day</h3><p>Add income and expenses as they happen, using categories that fit your business.</p></article>
-        <article><span class="step-number">02</span><h3>See where you stand</h3><p>Review your daily, weekly or monthly summary and follow your savings goals.</p></article>
-        <article><span class="step-number">03</span><h3>Plan your next step</h3><p>Check what you can afford and work toward your business and retirement goals.</p></article>
+        <article><span class="step-number">01</span><h3>{{ landing_text.landing_step1_title }}</h3><p>{{ landing_text.landing_step1_body }}</p></article>
+        <article><span class="step-number">02</span><h3>{{ landing_text.landing_step2_title }}</h3><p>{{ landing_text.landing_step2_body }}</p></article>
+        <article><span class="step-number">03</span><h3>{{ landing_text.landing_step3_title }}</h3><p>{{ landing_text.landing_step3_body }}</p></article>
       </div>
-      <a class="landing-partner-link" href="/partnerships/">Explore SACCO and bank partnerships</a>
+      <a class="landing-partner-link" href="/partnerships/">{{ landing_text.landing_partners_link }}</a>
     </section>
     </div>
 
@@ -416,7 +428,7 @@
         <label for="preferred_language">Preferred language</label>
         <select id="preferred_language" name="preferred_language">
           {% for value, label in languages %}
-            <option value="{{ value }}">{{ label }}</option>
+            <option value="{{ value }}"{% if value == landing_language %} selected{% endif %}>{{ label }}</option>
           {% endfor %}
         </select>
 

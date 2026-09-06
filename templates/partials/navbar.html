@@ -7,12 +7,12 @@
   <div class="{% if variant == 'public' %}nav-links{% else %}{{ links_class|default:'nav-links' }}{% endif %}" id="{% if variant == 'public' %}public-links{% else %}{{ links_id|default:'page-links' }}{% endif %}">
 {% if variant == "public" %}
     <div class="nav-items">
-    <a href="/#how-it-works">How it works</a>
-    <a href="/partnerships/">Partnerships</a>
-    <a href="/sacco/login/">Institution login</a>
+    <a href="/#how-it-works">{% if landing_text %}{{ landing_text.nav_how_it_works }}{% else %}How it works{% endif %}</a>
+    <a href="/partnerships/">{% if landing_text %}{{ landing_text.nav_partnerships }}{% else %}Partnerships{% endif %}</a>
+    <a href="/sacco/login/">{% if landing_text %}{{ landing_text.nav_institution_login }}{% else %}Institution login{% endif %}</a>
     </div>
-    <button class="nav-back hidden" type="button" id="nav-back">Back to landing</button>
-    <button class="nav-cta" type="button" id="nav-login">Log in</button>
+    <button class="nav-back hidden" type="button" id="nav-back">{% if landing_text %}{{ landing_text.nav_back_landing }}{% else %}Back to landing{% endif %}</button>
+    <button class="nav-cta" type="button" id="nav-login">{% if landing_text %}{{ landing_text.nav_login }}{% else %}Log in{% endif %}</button>
 {% elif variant == "visitor" %}
     <div class="nav-items">
     <a href="/">Home</a>

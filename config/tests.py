@@ -1,4 +1,8 @@
-from django.test import SimpleTestCase
+from django.test import SimpleTestCase, TestCase
+
+from apps.accounts.models import Language
+from apps.assistant.translations import page_label
+from config.views import LANDING_LANGUAGE_SESSION_KEY
 
 
 class ResponsivePageContractTests(SimpleTestCase):
@@ -187,3 +191,33 @@ class WorkspacePageTests(SimpleTestCase):
         self.assertContains(private, 'id="partner-accounts"')
         self.assertContains(private, 'id="logout-button"')
         self.assertEqual(self.client.get("/signup/").status_code, 200)
+
+
+class LandingLanguageTests(TestCase):
+    def test_first_visit_defaults_to_english(self):
+        response = self.client.get("/")
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, 'id="landing-language"')
+        self.assertContains(response, page_label("english", "landing_headline"))
+        self.assertContains(response, 'option value="english" selected')
+        self.assertContains(response, 'id="preferred_language"')
+        self.assertContains(response, 'id="dash-language"')
+
+    def test_landing_choice_updates_copy_and_signup_default(self):
+        response = self.client.get("/?language=luganda")
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(self.client.session[LANDING_LANGUAGE_SESSION_KEY], Language.LUGANDA)
+        self.assertContains(response, f"<h1>{page_label('luganda', 'landing_headline')}</h1>")
+        self.assertNotContains(response, f"<h1>{page_label('english', 'landing_headline')}</h1>")
+        self.assertContains(response, 'option value="luganda" selected')
+        self.assertContains(response, 'id="preferred_language"')
+
+        follow = self.client.get("/")
+        self.assertContains(follow, f"<h1>{page_label('luganda', 'landing_headline')}</h1>")
+        self.assertContains(follow, 'option value="luganda" selected')
+
+    def test_signup_without_landing_choice_still_defaults_to_english(self):
+        response = self.client.get("/signup/")
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, 'id="preferred_language"')
+        self.assertContains(response, 'option value="english" selected')
