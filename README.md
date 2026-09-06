@@ -83,7 +83,8 @@ Edit `.env` privately. Replace the example secret and database credentials with 
 | --- | --- |
 | `SECRET_KEY` | Required private Django signing key; replace the example placeholder. |
 | `DEBUG` | Set `True` for local development. |
-| `ALLOWED_HOSTS` | For local use: `localhost,127.0.0.1`. |
+| `ALLOWED_HOSTS` | For local use: `localhost,127.0.0.1`. After a Render deploy, add `jenga.onrender.com` (or the hostname Render shows). |
+| `DATABASE_URL` | Leave unset locally. Render sets this when you attach Postgres. |
 | `DB_NAME` | Name of your local PostgreSQL database. |
 | `DB_USER`, `DB_PASSWORD` | Credentials for that database. |
 | `DB_HOST` | Use `localhost` or `127.0.0.1` for local development. |
@@ -94,8 +95,10 @@ Edit `.env` privately. Replace the example secret and database credentials with 
 | `GEMINI_MODEL` | Gemini model name used by the integration; verify availability for your account. |
 | `SUNBIRD_API_TOKEN` | Needed for the Sunbird translation integration. |
 | `SUNBIRD_TRANSLATE_URL` | Optional translation endpoint override; a default is defined in settings. |
+| `AT_USERNAME` | Africa's Talking username for the SMS gateway. |
+| `AT_API_KEY` | Africa's Talking API key for the SMS gateway. |
 
-Core authentication and SACCO access do not require AI-provider credentials. External AI/translation features depend on provider availability and credentials. No SMS-provider configuration is needed.
+Core authentication and SACCO access do not require AI-provider credentials. External AI/translation/SMS features depend on provider availability and credentials.
 
 ### 3. Create the development database
 
@@ -133,6 +136,36 @@ python manage.py runserver
 ```
 
 Open **http://127.0.0.1:8000/**. Stop the server with `Ctrl+C`.
+
+## Deploy on Render
+
+Create a **Web Service** from this GitHub repo and attach a Render **PostgreSQL** database. Use these commands:
+
+| Setting | Value |
+| --- | --- |
+| Build command | `./build.sh` |
+| Start command | `gunicorn config.wsgi:application` |
+
+`build.sh` installs dependencies, runs `collectstatic`, then `migrate`. If git does not keep the executable bit, run `chmod +x build.sh` (Git Bash) or `git update-index --chmod=+x build.sh` before the first deploy.
+
+Set these environment variables in the Render dashboard (**Environment**). Do not put real values in the repository.
+
+| Variable | Required | What to set |
+| --- | --- | --- |
+| `DEBUG` | Yes | `False` |
+| `SECRET_KEY` | Yes | A long random Django secret. Render will not start without it. |
+| `ALLOWED_HOSTS` | Yes | After the first deploy, use the hostname Render shows, for example `jenga.onrender.com`. Comma-separated if you have more than one host. |
+| `DATABASE_URL` | Yes | Added automatically when you link the Render Postgres database. Do not set this in local `.env`. |
+| `AT_USERNAME` | Yes | Africa's Talking username (SMS). |
+| `AT_API_KEY` | Yes | Africa's Talking API key (SMS). |
+| `SUNBIRD_API_TOKEN` | Yes | Sunbird translation token used by the assistant. |
+| `GEMINI_API_KEY` | Yes, for AI replies | Gemini API key used by the assistant / planning explanations. |
+| `GEMINI_MODEL` | Optional | Defaults to `gemini-3.6-flash` if omitted. |
+| `SUNBIRD_TRANSLATE_URL` | Optional | Override only if you do not want the default Sunbird endpoint. |
+| `CORS_ALLOWED_ORIGINS` | Optional | Needed only if a separate frontend origin will call the API. |
+| `CSRF_TRUSTED_ORIGINS` | Optional | Render's `https://<service>.onrender.com` origin is added automatically. |
+
+Local development is unchanged: keep `DEBUG=True` and the `DB_*` values in `.env`, and leave `DATABASE_URL` unset so Django continues to use your local PostgreSQL database.
 
 ## Pages and login credentials
 

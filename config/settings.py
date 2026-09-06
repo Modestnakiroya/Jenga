@@ -1,7 +1,9 @@
 from datetime import timedelta
 from pathlib import Path
 import os
+import sys
 
+import dj_database_url
 from dotenv import load_dotenv
 
 BASE_DIR = Path(__file__).resolve().parent.parent
@@ -20,11 +22,18 @@ def env_list(name, default=""):
     return [item.strip() for item in os.getenv(name, default).split(",") if item.strip()]
 
 
+# Set a unique random value in Render (Environment > SECRET_KEY). Never commit a production secret.
 SECRET_KEY = os.environ["SECRET_KEY"]
 
-DEBUG = env_bool("DEBUG", default=False)
+# Read from the environment; default is production-safe False. Local .env should set DEBUG=True.
+DEBUG = os.environ.get("DEBUG", "False") == "True"
 
-ALLOWED_HOSTS = env_list("ALLOWED_HOSTS")
+# Comma-separated hosts. After the first Render deploy, add the service hostname
+# (for example jenga.onrender.com) to ALLOWED_HOSTS in the Render dashboard.
+ALLOWED_HOSTS = [item.strip() for item in os.environ.get("ALLOWED_HOSTS", "").split(",") if item.strip()]
+_render_host = os.getenv("RENDER_EXTERNAL_HOSTNAME", "").strip()
+if _render_host and _render_host not in ALLOWED_HOSTS:
+    ALLOWED_HOSTS.append(_render_host)
 
 INSTALLED_APPS = [
     "django.contrib.admin",
@@ -48,6 +57,7 @@ INSTALLED_APPS = [
 
 MIDDLEWARE = [
     "django.middleware.security.SecurityMiddleware",
+    "whitenoise.middleware.WhiteNoiseMiddleware",
     "corsheaders.middleware.CorsMiddleware",
     "django.contrib.sessions.middleware.SessionMiddleware",
     "django.middleware.common.CommonMiddleware",
@@ -77,16 +87,27 @@ TEMPLATES = [
 
 WSGI_APPLICATION = "config.wsgi.application"
 
-DATABASES = {
-    "default": {
-        "ENGINE": "django.db.backends.postgresql",
-        "NAME": os.environ["DB_NAME"],
-        "USER": os.environ["DB_USER"],
-        "PASSWORD": os.environ["DB_PASSWORD"],
-        "HOST": os.environ["DB_HOST"],
-        "PORT": os.getenv("DB_PORT", "5432"),
+# Render sets DATABASE_URL when a Postgres database is attached.
+# Local development keeps the existing DB_* PostgreSQL settings when DATABASE_URL is unset.
+if os.environ.get("DATABASE_URL"):
+    DATABASES = {
+        "default": dj_database_url.config(
+            default=os.environ["DATABASE_URL"],
+            conn_max_age=600,
+            ssl_require=True,
+        )
     }
-}
+else:
+    DATABASES = {
+        "default": {
+            "ENGINE": "django.db.backends.postgresql",
+            "NAME": os.environ["DB_NAME"],
+            "USER": os.environ["DB_USER"],
+            "PASSWORD": os.environ["DB_PASSWORD"],
+            "HOST": os.environ["DB_HOST"],
+            "PORT": os.getenv("DB_PORT", "5432"),
+        }
+    }
 
 AUTH_USER_MODEL = "accounts.User"
 
@@ -103,6 +124,29 @@ USE_I18N = True
 USE_TZ = True
 
 STATIC_URL = "static/"
+STATIC_ROOT = BASE_DIR / "staticfiles"
+# Django 5.2 replacement for STATICFILES_STORAGE = CompressedManifestStaticFilesStorage.
+# Tests and local DEBUG keep Django's default storage so collectstatic/manifest files are not required.
+_static_backend = "whitenoise.storage.CompressedManifestStaticFilesStorage"
+if DEBUG or "test" in sys.argv:
+    _static_backend = "django.contrib.staticfiles.storage.StaticFilesStorage"
+STORAGES = {
+    "default": {
+        "BACKEND": "django.core.files.storage.FileSystemStorage",
+    },
+    "staticfiles": {
+        "BACKEND": _static_backend,
+    },
+}
+
+if os.getenv("RENDER"):
+    SECURE_PROXY_SSL_HEADER = ("HTTP_X_FORWARDED_PROTO", "https")
+
+CSRF_TRUSTED_ORIGINS = env_list("CSRF_TRUSTED_ORIGINS")
+if _render_host:
+    _render_origin = f"https://{_render_host}"
+    if _render_origin not in CSRF_TRUSTED_ORIGINS:
+        CSRF_TRUSTED_ORIGINS.append(_render_origin)
 
 DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
 
