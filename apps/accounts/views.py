@@ -6,7 +6,7 @@ from apps.accounts.serializers import (
     PhoneTokenObtainPairSerializer,
     ProfileSerializer,
     RegisterSerializer,
-    ResetPasswordSerializer,
+    PasswordAwareRefreshSerializer,
 )
 
 
@@ -20,19 +20,15 @@ class LoginView(TokenObtainPairView):
     permission_classes = [permissions.AllowAny]
 
 
+class SaccoLoginView(TokenObtainPairView):
+    from apps.accounts.serializers import SaccoLoginSerializer
+    serializer_class = SaccoLoginSerializer
+    permission_classes = [permissions.AllowAny]
+
+
 class RefreshView(TokenRefreshView):
+    serializer_class = PasswordAwareRefreshSerializer
     permission_classes = [permissions.AllowAny]
-
-
-class ResetPasswordView(generics.GenericAPIView):
-    serializer_class = ResetPasswordSerializer
-    permission_classes = [permissions.AllowAny]
-
-    def post(self, request, *args, **kwargs):
-        serializer = self.get_serializer(data=request.data)
-        serializer.is_valid(raise_exception=True)
-        serializer.save()
-        return Response({"detail": "Password updated. You can log in now."})
 
 
 class ProfileView(generics.RetrieveUpdateAPIView):
@@ -55,3 +51,14 @@ class PartnerAccountsView(generics.ListCreateAPIView):
 
     def perform_create(self, serializer):
         serializer.save(user=self.request.user)
+
+
+class InstitutionListView(generics.GenericAPIView):
+    permission_classes = [permissions.IsAuthenticated]
+
+    def get(self, request):
+        from apps.insights.models import Bank, Sacco
+        institutions = [{"id": f"{kind}:{obj.pk}", "name": obj.name, "type": kind}
+                        for kind, model in [("bank", Bank), ("sacco", Sacco)]
+                        for obj in model.objects.order_by("name")]
+        return Response(institutions)

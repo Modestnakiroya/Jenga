@@ -38,3 +38,11 @@ class AssistantPageView(TemplateView):
 
 class PartnersView(TemplateView):
     template_name = "partners.html"
+
+
+class InsightsPageView(TemplateView):
+    template_name = "insights.html"
+
+
+class SaccoPageView(TemplateView):
+    template_name = "sacco.html"

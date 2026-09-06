@@ -1,0 +1,79 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Jenga — AI insights</title>
+  <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700&display=swap" rel="stylesheet">
+  {% include "partials/design_system.html" %}
+  <style>
+    main { max-width: 1180px; margin: auto; padding: 0 1.25rem 3rem; }
+    .insight-form { display: flex; flex-wrap: wrap; align-items: end; gap: 1rem; }
+    .insight-form > div { flex: 1 1 160px; }
+    .insight-grid { display: grid; grid-template-columns: repeat(2,minmax(0,1fr)); gap: 1rem; margin-top: 1rem; }
+    .insight-grid .card { min-width: 0; overflow-wrap: anywhere; }
+    .insight-grid h2 { margin-top: 0; }
+    .insight-grid p { white-space: pre-wrap; }
+    .insight-note { margin: 1.5rem 0; color: var(--muted); }
+    @media (max-width: 760px) { .insight-grid { grid-template-columns: 1fr; } }
+  </style>
+</head>
+<body>
+  <main>{% include "partials/navbar.html" %}
+    <p class="eyebrow">Plan with your own numbers</p><h1>AI insights</h1>
+    <p class="lead">Review your savings goals and compare estimated interest on your recorded bank and SACCO accounts.</p>
+    <form id="insight-form" class="card">
+      <div class="insight-form">
+        <div><label for="projection-amount">Amount to compare</label><input id="projection-amount" name="amount" type="number" min="0.01" max="9999999999.99" step="0.01" required></div>
+        <div><label for="projection-currency">Currency</label><select id="projection-currency" name="currency"><option>UGX</option><option>USD</option><option>KES</option></select></div>
+        <div><label for="projection-months">Months</label><input id="projection-months" name="months" type="number" min="1" max="12" value="1" required></div>
+        <button class="primary-action" type="submit">Generate insights</button>
+      </div>
+      <label><input id="ai-explanation" type="checkbox" style="width:auto;min-height:0;"> Add an AI explanation of the savings tips</label>
+      <p class="hint">Optional AI explanation sends only general tip text to the configured AI provider, not your account identifiers or balances.</p>
+    </form>
+    <p id="insight-status" role="status" aria-live="polite"></p>
+    <section id="insight-results" class="hidden" aria-label="Your insights">
+      <div id="savings-overview" class="card"></div>
+      <p id="ai-summary"></p>
+      <h2>Your goal progress</h2><div id="goal-insights" class="insight-grid"></div>
+      <h2>Account comparisons</h2><p id="comparison-basis" class="hint"></p><div id="account-insights" class="insight-grid"></div>
+      <p id="projection-assumptions" class="insight-note"></p>
+    </section>
+  </main>
+  {% include "partials/member_page_scripts.html" %}
+  <script>
+    const insightStatus = document.getElementById('insight-status');
+    const results = document.getElementById('insight-results');
+    function node(tag,text){const el=document.createElement(tag);el.textContent=text;return el;}
+    function card(title,text){const el=node('article','');el.className='card';el.append(node('h2',title),node('p',text));return el;}
+    document.getElementById('insight-form').addEventListener('submit',async event=>{
+      event.preventDefault();const button=event.target.querySelector('button');if(button.disabled)return;
+      button.disabled=true;insightStatus.textContent='Preparing your insights...';results.classList.add('hidden');
+      const payload=Object.fromEntries(new FormData(event.target));payload.ai_summary=document.getElementById('ai-explanation').checked;
+      try{
+        const response=await sessionFetch('/api/v1/insights/personal/',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(payload)});
+        const data=await response.json();
+        if(!response.ok){insightStatus.textContent=response.status===401?'Please log in to view your insights.':'Check the amount and period, then try again.';return;}
+        const overview=document.getElementById('savings-overview');overview.replaceChildren(node('h2','Recorded goal savings: UGX '+data.saved_in_goals));
+        const tips=node('ul','');data.suggestions.forEach(tip=>tips.append(node('li',tip)));overview.append(tips);
+        document.getElementById('ai-summary').textContent=data.ai_summary||data.ai_status||'';
+        const goals=document.getElementById('goal-insights');goals.replaceChildren();
+        if(!data.goals.length)goals.append(node('p','No savings goals yet. Add a goal from the Goals page.'));
+        data.goals.forEach(goal=>goals.append(card(goal.name,goal.progress_percent+'% saved. UGX '+goal.remaining+' remaining.'+(goal.daily_saving_to_target?' About UGX '+goal.daily_saving_to_target+' per day to reach your dated target.':''))));
+        const accounts=document.getElementById('account-insights');accounts.replaceChildren();
+        if(!data.accounts.length)accounts.append(node('p','No accounts recorded in this currency. Add accounts and their terms under Partners.'));
+        data.accounts.forEach(account=>{
+          const match=account.id===data.recommended_account_id;
+          const summary=account.estimated_balance===null?'Interest rate not provided.':'Estimated balance: '+data.currency+' '+account.estimated_balance+'\nEstimated gross interest: '+data.currency+' '+account.estimated_interest;
+          const state=!account.meets_minimum?'Minimum deposit not met or not provided.':!account.terms_verified?'User-entered terms; not verified.':!account.terms_recent?'Terms need a recent verification date.':'Meets the recorded minimum with recent verified terms.';
+          accounts.append(card((match?'Highest estimated return: ':'')+account.institution+' — '+account.account,summary+'\n'+state));
+        });
+        document.getElementById('comparison-basis').textContent=data.recommendation_basis;
+        document.getElementById('projection-assumptions').textContent=data.assumptions;
+        results.classList.remove('hidden');insightStatus.textContent='Insights ready.';
+      }catch{insightStatus.textContent='Could not load insights. Please try again.';}
+      finally{button.disabled=false;}
+    });
+  </script>
+  {% include "partials/ui_behaviors.html" %}
+</body></html>

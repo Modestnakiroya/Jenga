@@ -50,10 +50,12 @@
       </header>
       <section class="balance-panel"><p>Business rhythm</p><strong id="profile-frequency"></strong><p id="profile-language"></p></section>
       <section class="section"><h2>Account details</h2><div class="details"><div class="detail"><small>Phone number</small><strong id="profile-phone"></strong></div><div class="detail"><small>Email</small><strong id="profile-email"></strong></div><div class="detail"><small>Business type</small><strong id="profile-type"></strong></div><div class="detail"><small>Started</small><strong id="profile-started"></strong></div></div></section>
+      <section class="section"><h2>Institution insights sharing</h2><p>Opt in to include your recorded goal savings in your assigned institution's group trends. No names, phone numbers, account details or individual balances are shown. Small groups are withheld. Turning this off deletes your stored savings snapshots.</p><label><input type="checkbox" id="analytics-consent" style="width:auto;min-height:0;"> Include my savings in institution group insights</label><p id="consent-status" role="status" aria-live="polite"></p></section>
       <section class="section"><h2>Manage your Jenga</h2><div class="menu"><a href="/goals/"><span>Savings goals</span><span aria-hidden="true">›</span></a><a href="/partners/"><span>Partner accounts</span><span aria-hidden="true">›</span></a><a href="/#how-it-works"><span>How Jenga works</span><span aria-hidden="true">›</span></a></div></section>
     </div>
     <p class="empty" id="profile-message">Log in from the dashboard to view your profile.</p>
   </main>
+  {% include "partials/session_client.html" %}
   <script>
     const token = sessionStorage.getItem("jengaAccessToken");
     const content = document.getElementById("profile-content");
@@ -72,9 +74,17 @@
     function initials(name) { return String(name || "J").trim().split(/\s+/).slice(0, 2).map((part) => part[0]).join("").toUpperCase(); }
     async function loadProfile() {
       if (!token) return;
-      const response = await fetch("/api/v1/profile/", { headers: { Authorization: "Bearer " + token } });
+      const response = await sessionFetch("/api/v1/profile/", { headers: { Authorization: "Bearer " + token } });
       if (!response.ok) { message.textContent = "Your session expired. Log in again from the dashboard."; return; }
       const profile = await response.json();
+      document.getElementById("analytics-consent").checked = profile.share_sacco_insights;
+      if (["sacco", "bank"].includes(profile.role)) {
+        const items = document.querySelector(".nav-items"); items.replaceChildren();
+        for (const [href, label] of [["/sacco/", "Institution insights"], ["/profile/", "Profile"]]) {
+          const link = document.createElement("a"); link.href = href; link.textContent = label;
+          if (href === "/profile/") link.setAttribute("aria-current", "page"); items.append(link);
+        }
+      }
       const business = profile.business_profile || {};
       document.getElementById("profile-avatar").textContent = initials(profile.full_name);
       document.getElementById("profile-name").textContent = profile.full_name || "Jenga member";
@@ -88,6 +98,15 @@
       content.classList.remove("hidden");
       message.classList.add("hidden");
     }
+    document.getElementById("analytics-consent").addEventListener("change", async event => {
+      const box = event.target; const value = box.checked; box.disabled = true;
+      try {
+        const response = await sessionFetch("/api/v1/profile/", {method:"PATCH",headers:{"Content-Type":"application/json"},body:JSON.stringify({share_sacco_insights:value})});
+        if (!response.ok) throw new Error("Not saved");
+        document.getElementById("consent-status").textContent = value ? "Sharing enabled." : "Sharing disabled and snapshots deleted.";
+      } catch { box.checked = !value; document.getElementById("consent-status").textContent = "Could not save your choice. Please try again."; }
+      finally { box.disabled = false; }
+    });
     loadProfile();
   </script>
   {% include "partials/ui_behaviors.html" %}

@@ -459,9 +459,6 @@ class HomePageI18nTests(APITestCase):
         self.assertIn("Ensawo y'akatyabaga", html)
         self.assertIn("Tereka goolo", html)
 
-    def test_commitments_page_embeds_luganda_labels(self):
-        response = self.client.get("/commitments/")
-        self.assertEqual(response.status_code, 200)
-        html = response.content.decode()
-        self.assertIn('data-i18n="saving_checkins"', html)
-        self.assertIn("Okukebera okutereka", html)
+    def test_removed_commitments_page_is_not_exposed(self):
+        self.assertEqual(self.client.get("/commitments/").status_code, 404)
+

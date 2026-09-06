@@ -68,7 +68,7 @@
   <a class="skip-link" href="#main-content">Skip to content</a>
   <main id="main-content" tabindex="-1">
     {% include "partials/navbar.html" %}
-    <h1>Savings goals</h1>
+    <h1 data-i18n="savings_goals">Savings goals</h1>
     <p class="lead">Track what you are saving toward.</p>
 
     <div class="card savings-overview">
@@ -82,7 +82,7 @@
     </section>
     <div class="overlay hidden" id="goal-overlay">
     <div class="card">
-      <div class="card-head"><h2 id="goal-dialog-title">Add a savings goal</h2><button type="button" class="ghost icon-close" id="goal-close" aria-label="Close add goal form"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="m6 6 12 12M6 18 18 6"/></svg></button></div>
+      <div class="card-head"><h2 id="goal-dialog-title" data-i18n="add_a_goal">Add a savings goal</h2><button type="button" class="ghost icon-close" id="goal-close" aria-label="Close add goal form"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="m6 6 12 12M6 18 18 6"/></svg></button></div>
       <form id="goal-form">
         <label for="goal-name" data-i18n="goal_name">Name</label>
         <input id="goal-name" required>
@@ -115,8 +115,6 @@
   <script>
     const DASHBOARD_LABELS = {{ dashboard_labels_json|safe }};
     let currentLanguage = "english";
-    let accessToken = sessionStorage.getItem("jengaAccessToken") || "";
-    let refreshToken = sessionStorage.getItem("jengaRefreshToken") || "";
     const list = document.getElementById("goals-list");
     const empty = document.getElementById("goals-empty");
     const message = document.getElementById("message");
@@ -163,70 +161,6 @@
         const text = Array.isArray(value) ? value.join(" ") : value;
         return key + ": " + text;
       }).join("\n");
-    }
-
-    async function refreshAccessToken() {
-      if (!refreshToken) return false;
-      const response = await fetch("/api/v1/auth/refresh/", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ refresh: refreshToken }),
-      });
-      const data = await response.json().catch(() => ({}));
-      if (!response.ok || !data.access) return false;
-      accessToken = data.access;
-      sessionStorage.setItem("jengaAccessToken", accessToken);
-      if (data.refresh) {
-        refreshToken = data.refresh;
-        sessionStorage.setItem("jengaRefreshToken", refreshToken);
-      }
-      return true;
-    }
-
-    async function apiFetch(url, options) {
-      const headers = Object.assign(
-        { Authorization: "Bearer " + accessToken },
-        (options && options.headers) || {}
-      );
-      let response = await fetch(url, Object.assign({}, options || {}, { headers: headers }));
-      if (response.status === 401 && (await refreshAccessToken())) {
-        headers.Authorization = "Bearer " + accessToken;
-        response = await fetch(url, Object.assign({}, options || {}, { headers: headers }));
-      }
-      const data = await response.json().catch(() => ({}));
-      return { response: response, data: data };
-    }
-
-    async function refreshAccessToken() {
-      if (!refreshToken) return false;
-      const response = await fetch("/api/v1/auth/refresh/", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ refresh: refreshToken }),
-      });
-      const data = await response.json().catch(() => ({}));
-      if (!response.ok || !data.access) return false;
-      accessToken = data.access;
-      sessionStorage.setItem("jengaAccessToken", accessToken);
-      if (data.refresh) {
-        refreshToken = data.refresh;
-        sessionStorage.setItem("jengaRefreshToken", refreshToken);
-      }
-      return true;
-    }
-
-    async function apiFetch(url, options) {
-      const headers = Object.assign(
-        { Authorization: "Bearer " + accessToken },
-        (options && options.headers) || {}
-      );
-      let response = await fetch(url, Object.assign({}, options || {}, { headers: headers }));
-      if (response.status === 401 && (await refreshAccessToken())) {
-        headers.Authorization = "Bearer " + accessToken;
-        response = await fetch(url, Object.assign({}, options || {}, { headers: headers }));
-      }
-      const data = await response.json().catch(() => ({}));
-      return { response: response, data: data };
     }
 
     const goalOverlay = document.getElementById("goal-overlay");
@@ -276,9 +210,8 @@
         empty.classList.remove("hidden");
         return;
       }
-      const response = await sessionFetch("/api/v1/goals/", {
-        headers: { Authorization: "Bearer " + token },
-      });
+      const response = await sessionFetch("/api/v1/goals/");
+      const data = await response.json().catch(() => ([]));
       if (!response.ok) {
         document.getElementById("savings-total").textContent = "Unavailable";
         empty.textContent = "Could not load goals. Log in again from the home page.";
@@ -311,6 +244,7 @@
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(payload),
       });
+      const data = await response.json().catch(() => ({}));
       if (!response.ok) {
         showMessage(fieldErrors(data), false);
         return;
@@ -325,7 +259,17 @@
       } finally { button.disabled = false; }
     });
 
-    loadGoals().catch(() => {
+    async function initializeGoals() {
+      if (sessionStorage.getItem("jengaAccessToken") || sessionStorage.getItem("jengaRefreshToken")) {
+        try {
+          const response = await sessionFetch("/api/v1/profile/");
+          if (response.ok) currentLanguage = (await response.json()).preferred_language || "english";
+        } catch { /* Goals can still be retried independently. */ }
+      }
+      applyLabels();
+      await loadGoals();
+    }
+    initializeGoals().catch(() => {
       document.getElementById("savings-total").textContent = "Unavailable";
       empty.textContent = "Could not load savings. Please refresh to try again.";
       empty.classList.remove("hidden");

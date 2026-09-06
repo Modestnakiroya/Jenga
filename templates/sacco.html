@@ -1,0 +1,58 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Jenga — Institution insights</title>
+  <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700&display=swap" rel="stylesheet">
+  {% include "partials/design_system.html" %}
+  <style>
+    main { max-width: 1180px; margin: auto; padding: 0 1.25rem 3rem; }
+    .sacco-grid { display: grid; grid-template-columns: 1fr 2fr; gap: 1.25rem; }
+    .membership-summary { margin-bottom: 1.25rem; }
+    .sector-row { display: flex; justify-content: space-between; gap: 1rem; padding: 1rem 0; border-bottom: 1px solid var(--line); }
+    @media(max-width:760px){.sacco-grid{grid-template-columns:1fr;}}
+  </style>
+</head><body>
+  <main>{% include "partials/navbar.html" with variant="sacco" %}
+    <p class="eyebrow">Member trends</p><h1>Institution insights</h1>
+    <p class="lead">See how many members are registered under your institution, alongside savings trends from members who chose to share.</p>
+    <p id="sacco-status" role="status" aria-live="polite">Checking access...</p>
+    <p id="sacco-login-link" class="hidden"><a class="primary-action" href="/sacco/login/">Institution login</a></p>
+    <section id="sacco-report" class="hidden">
+      <h2 id="sacco-name"></h2><p id="sacco-period"></p>
+      <div class="card membership-summary">
+        <h2>Members on Jenga</h2>
+        <p class="amount large" id="institution-member-count"></p>
+        <p class="hint" id="institution-member-description"></p>
+        <p class="hint">Current membership count. Financial trends below cover completed months and require at least five sharing members with enough history.</p>
+      </div>
+      <div class="sacco-grid">
+        <div class="card"><h2>Savings growth</h2><p class="amount large" id="sacco-growth"></p><p class="hint">Change in recorded goal savings across the two completed month ends.</p></div>
+        <div class="card"><h2>Business sectors saving most</h2><p class="hint">Share of savings among sectors large enough to report.</p><div id="sacco-sectors"></div></div>
+      </div>
+      <p id="sacco-method" class="hint"></p>
+    </section>
+  </main>
+  {% include "partials/member_page_scripts.html" %}
+  <script>
+    async function loadReport(){
+      const status=document.getElementById('sacco-status');
+      try{
+        const response=await sessionFetch('/api/v1/insights/sacco/');
+        if(!response.ok){status.textContent=response.status===401?'Please log in with an approved institution account.':response.status===403?'Institution access has not been granted or has been revoked. Contact your administrator.':'Could not load the report. Please refresh to try again.';document.getElementById('sacco-login-link').classList.remove('hidden');return;}
+        const data=await response.json();status.textContent=data.status;
+        document.getElementById('sacco-name').textContent=data.sacco;
+        document.getElementById('institution-member-count').textContent=Number(data.member_count).toLocaleString();
+        document.getElementById('institution-member-description').textContent=data.member_count_description;
+        document.getElementById('sacco-period').textContent=data.previous_period_end+' to '+data.period_end;
+        document.getElementById('sacco-growth').textContent=data.growth_percent===null?'Not enough data':data.growth_percent+'%';
+        const sectors=document.getElementById('sacco-sectors');sectors.replaceChildren();
+        if(!data.sectors.length)sectors.textContent='No sectors meet the reporting threshold yet.';
+        data.sectors.forEach(item=>{const row=document.createElement('div');row.className='sector-row';const label=document.createElement('span');label.textContent=item.sector;const value=document.createElement('strong');value.textContent=item.share_of_visible_savings_percent===null?'Unavailable':item.share_of_visible_savings_percent+'%';row.append(label,value);sectors.append(row);});
+        document.getElementById('sacco-method').textContent=data.method;document.getElementById('sacco-report').classList.remove('hidden');
+      }catch{status.textContent='Could not connect. Please refresh to try again.';}
+    }
+    loadReport();
+  </script>
+  {% include "partials/ui_behaviors.html" %}
+</body></html>
